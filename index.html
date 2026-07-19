@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>私人出行助理</title>
+<meta name="theme-color" content="#4A90D9">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="出行助理">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/screens.css">
+</head>
+<body>
+<div class="phone">
+
+  <section id="screen-trips" class="screen active">
+    <div class="screen-body"></div>
+  </section>
+
+  <section id="screen-calendar" class="screen">
+    <div class="screen-body"></div>
+  </section>
+
+  <section id="screen-profile" class="screen">
+    <div class="screen-body"></div>
+  </section>
+
+  <section id="screen-trip-detail" class="screen no-tab">
+    <div class="screen-body"></div>
+  </section>
+
+  <nav class="tab-bar">
+    <button class="tab-item active" data-screen="screen-trips">
+      <span class="tab-icon">✈️</span><span class="tab-label">行程</span>
+    </button>
+    <button class="tab-item" data-screen="screen-calendar">
+      <span class="tab-icon">📅</span><span class="tab-label">日历</span>
+    </button>
+    <button class="tab-item" data-screen="screen-profile">
+      <span class="tab-icon">👤</span><span class="tab-label">我的</span>
+    </button>
+  </nav>
+
+</div>
+<script src="js/data.js"></script>
+<script src="js/views-main.js"></script>
+<script src="js/views-trip.js"></script>
+<script src="js/app.js"></script>
+<script>
+/* 注册 Service Worker,实现完全离线运行 */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("./sw.js");
+  });
+}
+</script>
+</body>
+</html>
