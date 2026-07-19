@@ -190,6 +190,43 @@ function closeTripDetail() {
   if (DETAIL_FROM === "screen-calendar") renderCalendar();
 }
 
+/* ---------- PWA 更新检测(桌面版自动拉新) ---------- */
+
+if ("serviceWorker" in navigator) {
+  /* SW 更新就绪后自动刷新,确保桌面 PWA 始终用最新版 */
+  navigator.serviceWorker.register("./sw.js").then(function (reg) {
+    reg.addEventListener("updatefound", function () {
+      var newWorker = reg.installing;
+      if (!newWorker) return;
+      newWorker.addEventListener("statechange", function () {
+        if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+          /* 新 SW 已安装但旧版还在控制中→弹提示刷新 */
+          if (confirm("有新版本可用,立即刷新?")) {
+            window.location.reload();
+          }
+        }
+      });
+    });
+  });
+
+  /* 页面已由 SW 控制时,每次切回前台检测更新 */
+  var refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", function () {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+
+  /* 切回前台时主动检查更新 */
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible" && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.getRegistration().then(function (reg) {
+        if (reg) reg.update();
+      });
+    }
+  });
+}
+
 /* ---------- 入口 ---------- */
 
 renderTripList();

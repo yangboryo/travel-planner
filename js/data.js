@@ -5,7 +5,17 @@ const APP_DATA = {
   passport: { nationality: "", expiry: "" },
 
   /* 相对 AUD 的汇率:1 AUD = rate 单位外币 */
-  fxRates: { AUD: 1, HKD: 5.1, MOP: 5.25, JPY: 97, THB: 23.5, CNY: 4.7, SGD: 0.88, KRW: 930, USD: 0.65, EUR: 0.61, GBP: 0.52, TWD: 21, MYR: 3.1, VND: 16400, IDR: 10500, PHP: 38 },
+  /* 相对 AUD 的汇率:1 AUD = rate 单位外币(阶段二接入实时汇率) */
+  fxRates: {
+    AUD: 1, HKD: 5.1, MOP: 5.25, JPY: 97, THB: 23.5, CNY: 4.7, SGD: 0.88,
+    KRW: 930, USD: 0.65, EUR: 0.61, GBP: 0.52, TWD: 21, MYR: 3.1,
+    VND: 16400, IDR: 10500, PHP: 38, INR: 55, CAD: 0.91, NZD: 1.11,
+    SEK: 7.0, DKK: 4.5, NOK: 7.1, PLN: 2.6, CZK: 15, HUF: 240,
+    CHF: 0.59, TRY: 21, RUB: 58, BRL: 3.8, MXN: 13,
+    ARS: 700, CLP: 650, AED: 2.4, SAR: 2.4, QAR: 2.4,
+    EGP: 32, ZAR: 12, KES: 85, MAD: 6.5, ISK: 91, RON: 3.0, BGN: 1.2,
+    KHR: 2700, LAK: 14400, MMK: 1400
+  },
 
   /* 国家 → 默认币种，新建行程时自动匹配(可手动改) */
   countryCurrencies: {
@@ -16,13 +26,21 @@ const APP_DATA = {
     "法国": "EUR", "德国": "EUR", "意大利": "EUR", "西班牙": "EUR", "荷兰": "EUR"
   },
 
-  /* ISO 国家码 → 币种(保底匹配,API 返回的中文国家名可能不一致) */
+  /* ISO 国家码 → 币种(保底匹配,覆盖全球主要国家/地区) */
   countryCodeCurrencies: {
     "CN": "CNY", "HK": "HKD", "MO": "MOP", "TW": "TWD",
     "JP": "JPY", "TH": "THB", "SG": "SGD", "KR": "KRW",
-    "US": "USD", "GB": "GBP", "AU": "AUD",
+    "US": "USD", "GB": "GBP", "AU": "AUD", "CA": "CAD", "NZ": "NZD",
     "MY": "MYR", "VN": "VND", "ID": "IDR", "PH": "PHP",
-    "FR": "EUR", "DE": "EUR", "IT": "EUR", "ES": "EUR", "NL": "EUR"
+    "IN": "INR", "KH": "KHR", "LA": "LAK", "MM": "MMK",
+    "FR": "EUR", "DE": "EUR", "IT": "EUR", "ES": "EUR", "NL": "EUR",
+    "BE": "EUR", "AT": "EUR", "PT": "EUR", "GR": "EUR", "IE": "EUR",
+    "FI": "EUR", "SE": "SEK", "DK": "DKK", "NO": "NOK", "PL": "PLN",
+    "CZ": "CZK", "HU": "HUF", "CH": "CHF", "TR": "TRY", "RU": "RUB",
+    "BR": "BRL", "MX": "MXN", "AR": "ARS", "CL": "CLP",
+    "AE": "AED", "SA": "SAR", "QA": "QAR", "EG": "EGP",
+    "ZA": "ZAR", "KE": "KES", "MA": "MAD",
+    "IS": "ISK", "HR": "EUR", "RO": "RON", "BG": "BGN"
   },
 
   /* 目的地 → 签证规则(示例数据,实际以用户护照国籍对应规则为准) */

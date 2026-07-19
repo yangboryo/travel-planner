@@ -97,7 +97,12 @@ function openCitySearch(title, onPick) {
         return;
       }
       box.innerHTML = results.map(function (r, i) {
-        var region = [r.admin1, r.country].filter(Boolean).join(" · ");
+        /* admin2(市级)优先,解决部分城市 admin1(省级)不准确的问题,如腾冲 */
+        var regionParts = [];
+        if (r.admin2) regionParts.push(r.admin2);
+        if (r.admin1 && r.admin1 !== r.admin2) regionParts.push(r.admin1);
+        if (r.country) regionParts.push(r.country);
+        var region = regionParts.join(" · ");
         return '<div class="city-result" data-i="' + i + '">' +
           '<span class="wish-type">' + flagEmoji(r.country_code) + '</span>' +
           '<div style="flex:1"><div>' + r.name + '</div>' +

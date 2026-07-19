@@ -464,25 +464,27 @@
 
 /* ---------- 行程卡片删除按钮 ---------- */
 
-.trip-card { position: relative; }
+.trip-card { position: relative; overflow: visible; }
 .trip-del {
   position: absolute;
-  top: 8px;
-  right: 10px;
-  width: 24px;
-  height: 24px;
+  top: -6px;
+  right: -6px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  background: #F0F2F5;
+  background: #fff;
+  border: 1px solid #E3EBF5;
   color: var(--text-faint);
-  font-size: 12px;
-  line-height: 24px;
+  font-size: 11px;
+  line-height: 20px;
   text-align: center;
   cursor: pointer;
   z-index: 2;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
-.trip-del:hover { background: var(--danger); color: #fff; }
-.past-trip { position: relative; }
-.past-trip .trip-del { top: 50%; transform: translateY(-50%); }
+.trip-del:active { background: var(--danger); color: #fff; border-color: var(--danger); }
+.past-trip { position: relative; overflow: visible; }
+.past-trip .trip-del { top: 50%; right: -4px; transform: translateY(-50%); }
 
 /* ---------- 小按钮 / 危险按钮 ---------- */
 
