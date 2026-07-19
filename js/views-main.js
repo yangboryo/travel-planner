@@ -33,6 +33,8 @@ function renderTripList() {
     '<h1 class="page-title">我的行程</h1>' +
     '<button class="add-btn" onclick="openNewTripSheet()">+</button></div>';
 
+  html += renderReminders(upcoming);
+
   if (upcoming.length) {
     html += '<div class="section-label">即将出行</div>';
     upcoming.forEach(function (t) {
@@ -63,6 +65,66 @@ function renderTripList() {
   }
 
   body.innerHTML = html;
+}
+
+/* ---------- 主界面出行提醒 ---------- */
+
+function renderReminders(upcoming) {
+  var items = [];
+  var p = getPassport();
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+
+  /* 护照有效期(全局) */
+  if (p.expiry) {
+    var monthsLeft = (new Date(p.expiry) - new Date()) / (30.44 * 86400000);
+    if (monthsLeft < 9) {
+      items.push({ icon: "🛂", text: "护照有效期不足 9 个月,部分国家可能拒绝入境", action: "goProfile()" });
+    }
+  }
+
+  upcoming.forEach(function (t) {
+    var goto = "openTripDetail('" + t.id + "')";
+
+    /* 签证 */
+    var rule = APP_DATA.visaRules[t.city];
+    if (rule && rule.type !== "免签") {
+      items.push({ icon: "⚠️", text: t.flag + " " + t.city + ":该目的地" + rule.type + ",建议提前 " + rule.applyAheadDays + " 天办理", action: goto });
+    }
+
+    /* 插座 */
+    var pc = plugCheck(t.city);
+    if (pc && !pc.compatible) {
+      items.push({ icon: "🔌", text: t.flag + " " + t.city + ":插座 " + pc.dest.type + " 型(" + pc.dest.desc + "),与" + pc.homeName + " " + pc.home.type + " 型不通用,需备转换头", action: goto });
+    }
+
+    /* 逾期待办 */
+    var overdue = (t.todos || []).filter(function (td) {
+      var d = new Date(t.startDate); d.setDate(d.getDate() - td.offsetDays);
+      return !td.done && d < today;
+    }).length;
+    if (overdue > 0) {
+      items.push({ icon: "⏰", text: t.flag + " " + t.city + ":有 " + overdue + " 项待办已逾期", action: goto });
+    }
+  });
+
+  /* 未设置常住地时给一次性引导(有即将出行的行程才提示) */
+  if (!p.home && upcoming.length) {
+    items.push({ icon: "💡", text: "设置常住地后,可自动提醒目的地插座是否需要转换头", action: "goProfile()" });
+  }
+
+  if (!items.length) return "";
+  return '<div class="section-label">出行提醒</div>' +
+    items.map(function (r) {
+      return '<div class="reminder-card" onclick="' + r.action + '">' +
+        '<span class="reminder-icon">' + r.icon + '</span>' +
+        '<span class="reminder-text">' + r.text + '</span>' +
+        '<span style="color:var(--text-faint)">›</span></div>';
+    }).join("");
+}
+
+function goProfile() {
+  showScreen("screen-profile");
+  renderProfile();
 }
 
 /* ---------- 日历页 ---------- */
@@ -166,6 +228,8 @@ function renderProfile() {
     '<span class="profile-key">国籍</span><span>' + (p.nationality || '<span style="color:var(--text-faint)">点击设置</span>') + '</span></div>' +
     '<div class="profile-row lodging-row" onclick="editPassport(\'expiry\',\'护照有效期(如 2031-05-20)\')">' +
     '<span class="profile-key">护照有效期至</span><span>' + (p.expiry || '<span style="color:var(--text-faint)">点击设置</span>') + '</span></div>' +
+    '<div class="profile-row lodging-row" onclick="editHome()">' +
+    '<span class="profile-key">常住地(用于插座提醒)</span><span>' + (p.home || '<span style="color:var(--text-faint)">点击设置</span>') + '</span></div>' +
     expiryHTML +
     '</div>';
 
@@ -199,6 +263,20 @@ function editPassport(key, label) {
   var val = prompt("设置" + label, cur);
   if (val === null) return;
   setPassportField(key, val.trim());
+  renderProfile();
+}
+
+function editHome() {
+  var options = Object.keys(APP_DATA.homePlugs).join(" / ");
+  var cur = getPassport().home || "";
+  var val = prompt("设置常住地(支持:" + options + ")", cur);
+  if (val === null) return;
+  val = val.trim();
+  if (val && !APP_DATA.homePlugs[val]) {
+    alert("暂不认识这个地区的插座制式,目前支持:" + options);
+    return;
+  }
+  setPassportField("home", val);
   renderProfile();
 }
 

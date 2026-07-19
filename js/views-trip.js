@@ -140,7 +140,14 @@ function toggleTodo(tripId, idx) {
 /* ---------- 板块:智能打包清单 ---------- */
 
 function generatePacking(trip) {
-  var items = ["护照", "充电器", "转换插头"];
+  var items = ["护照", "充电器"];
+  /* 插座:不通用才生成转换头;未设置常住地时保守生成 */
+  var pc = plugCheck(trip.city);
+  if (!pc) {
+    items.push("转换插头");
+  } else if (!pc.compatible) {
+    items.push("电源转换头(" + pc.dest.type + " 型)");
+  }
   var days = Math.round((new Date(trip.endDate) - new Date(trip.startDate)) / 86400000) + 1;
   var maxHigh = 0, minLow = 99, hasRain = false;
   (trip.weather || []).forEach(function (w) {
@@ -366,8 +373,20 @@ function sectionEmergency(trip) {
 
 function sectionTips(trip) {
   var tp = trip.tips || {};
+
+  /* 插座:有常住地设置时显示对比结论 */
+  var plugVal = tp.plug || "—";
+  var pc = plugCheck(trip.city);
+  if (pc) {
+    plugVal = trip.city + " " + pc.dest.type + " 型(" + pc.dest.desc + ")· " +
+      pc.homeName + " " + pc.home.type + " 型(" + pc.home.desc + ")<br>" +
+      (pc.compatible
+        ? '<strong style="color:#3D8B5F">✓ 与家里通用,无需转换头</strong>'
+        : '<strong style="color:var(--warn-text)">✗ 不通用,需购买 ' + pc.dest.type + ' 型转换头</strong>');
+  }
+
   var rows = [
-    { icon: "🕐", label: "时差", val: tp.timezone }, { icon: "🔌", label: "插座", val: tp.plug },
+    { icon: "🕐", label: "时差", val: tp.timezone }, { icon: "🔌", label: "插座", val: plugVal },
     { icon: "💵", label: "小费", val: tp.tipping }, { icon: "🚇", label: "交通卡", val: tp.transitCard }
   ];
   var body = rows.map(function (r) {

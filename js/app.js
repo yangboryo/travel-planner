@@ -15,6 +15,20 @@ function loadState() {
 var STATE = loadState();
 /* 兼容旧版本存档:补上缺失的字段 */
 if (!STATE.passport) STATE.passport = { nationality: "", expiry: "" };
+if (STATE.passport.home === undefined) STATE.passport.home = "";
+
+/* 插座兼容判断:两地 type 字母有交集即兼容 */
+function plugCheck(city) {
+  var home = getPassport().home;
+  var dest = APP_DATA.plugTypes[city];
+  if (!home || !dest) return null;
+  var homePlug = APP_DATA.homePlugs[home];
+  if (!homePlug) return null;
+  var compatible = dest.type.split("").some(function (c) {
+    return homePlug.type.indexOf(c) !== -1;
+  });
+  return { compatible: compatible, dest: dest, home: homePlug, homeName: home };
+}
 
 function getPassport() { return STATE.passport; }
 

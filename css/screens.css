@@ -26,6 +26,22 @@
 .trip-dates { font-size: 13px; color: var(--text-sub); margin-top: 2px; }
 .trip-badges { margin-top: 10px; display: flex; gap: 8px; }
 
+.reminder-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--warn-bg);
+  border-radius: 12px;
+  padding: 11px 14px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--warn-text);
+  line-height: 1.45;
+}
+.reminder-icon { font-size: 16px; }
+.reminder-text { flex: 1; }
+
 .past-trip {
   background: #EDF1F7;
   border-radius: 12px;

@@ -17,6 +17,27 @@ const APP_DATA = {
     "上海": { type: "需签证", stayDays: 0, applyAheadDays: 30 }
   },
 
+
+  /* 目的地插座制式(type 含多个字母表示兼容多种) */
+  plugTypes: {
+    "香港": { type: "G", desc: "英式三脚方插" },
+    "东京": { type: "A", desc: "两脚扁插" },
+    "曼谷": { type: "AC", desc: "两脚扁/圆插混用" },
+    "新加坡": { type: "G", desc: "英式三脚方插" },
+    "北京": { type: "ACI", desc: "两脚扁/圆插与三脚扁插混用" },
+    "上海": { type: "ACI", desc: "两脚扁/圆插与三脚扁插混用" }
+  },
+
+  /* 常住地 → 家用插座制式 */
+  homePlugs: {
+    "澳大利亚": { type: "I", desc: "八字两脚+地线三脚扁插" },
+    "中国": { type: "ACI", desc: "两脚扁/圆插与三脚扁插" },
+    "日本": { type: "A", desc: "两脚扁插" },
+    "美国": { type: "AB", desc: "两脚扁插" },
+    "英国": { type: "G", desc: "英式三脚方插" },
+    "新西兰": { type: "I", desc: "八字两脚扁插" }
+  },
+
   trips: [
     {
       id: "hk-2026-08",
