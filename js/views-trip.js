@@ -72,13 +72,8 @@ function renderSections(trip) {
 
 /* ---------- 板块:天气 ---------- */
 
-function sectionWeather(trip) {
-  if (!trip.weather || !trip.weather.length) {
-    return sectionCard("weather", "🌤", "天气预报", "暂无数据", '<div class="empty-inline">阶段二接入天气 API 后显示</div>');
-  }
-  var first = trip.weather[0];
-  var summary = first.high + "° / " + first.low + "° · " + first.desc;
-  var body = '<div class="weather-strip">' + trip.weather.map(function (w) {
+function weatherStripHTML(days) {
+  return days.map(function (w) {
     var d = new Date(w.date);
     return '<div class="weather-day">' +
       '<div class="wd-date">' + (d.getMonth() + 1) + "/" + d.getDate() + '</div>' +
@@ -87,7 +82,46 @@ function sectionWeather(trip) {
       '<div class="wd-low">' + w.low + "°</div>" +
       '<div class="wd-desc">' + w.desc + '</div>' +
       '</div>';
-  }).join("") + "</div>";
+  }).join("");
+}
+
+function sectionWeather(trip) {
+  var summary = "加载中…";
+  var stripHTML, noteHTML = "";
+  if (trip.weather && trip.weather.length) {
+    var first = trip.weather[0];
+    summary = first.high + "° / " + first.low + "° · " + first.desc;
+    stripHTML = weatherStripHTML(trip.weather);
+    noteHTML = '<div class="fx-note" id="tw-note">示例数据,联网后自动更新</div>';
+  } else {
+    summary = "—";
+    stripHTML = "";
+    noteHTML = '<div class="empty-inline" id="tw-note">出行日期进入 16 天内后自动显示逐日预报</div>';
+  }
+
+  var body = '<div class="tw-now" id="tw-now">📍 ' + trip.city + ' 现在:获取中…</div>' +
+    '<div class="weather-strip" id="tw-strip">' + stripHTML + '</div>' + noteHTML;
+
+  /* 异步:目的地当前天气 + 出行日期真实预报 */
+  setTimeout(function () {
+    fetchCurrentWeather(trip.loc, function (w) {
+      var el = document.getElementById("tw-now");
+      if (!el) return;
+      el.innerHTML = w
+        ? "📍 " + trip.city + " 现在:" + wmoInfo(w.code).icon + " " + w.temp + "°C · " + wmoInfo(w.code).desc
+        : "📍 " + trip.city + " 现在:离线,暂无数据";
+    });
+    fetchForecast(trip.loc, trip.startDate, trip.endDate, function (days) {
+      if (!days || !days.length) return;
+      var strip = document.getElementById("tw-strip");
+      var note = document.getElementById("tw-note");
+      var head = document.querySelector("#sc-weather .sc-summary");
+      if (strip) strip.innerHTML = weatherStripHTML(days);
+      if (note) note.outerHTML = '<div class="fx-note">出行期实时预报 · Open-Meteo</div>';
+      if (head) head.textContent = days[0].high + "° / " + days[0].low + "° · " + days[0].desc;
+    });
+  }, 0);
+
   return sectionCard("weather", "🌤", "天气预报", summary, body);
 }
 
@@ -116,6 +150,11 @@ function sectionTodos(trip) {
   var doneCount = trip.todos.filter(function (t) { return t.done; }).length;
   var today = new Date(); today.setHours(0, 0, 0, 0);
 
+  /* 逾期数:未完成且日期已过 */
+  var overdueCount = trip.todos.filter(function (td) {
+    return !td.done && todoDate(trip, td.offsetDays) < today;
+  }).length;
+
   var body = '<div class="todo-line">' + sorted.map(function (td) {
     var idx = trip.todos.indexOf(td);
     var d = todoDate(trip, td.offsetDays);
@@ -127,7 +166,12 @@ function sectionTodos(trip) {
       '</div>';
   }).join("") + "</div>";
 
-  return sectionCard("todos", "✅", "待办时间线", doneCount + "/" + trip.todos.length, body);
+  var summary = doneCount + "/" + trip.todos.length +
+    (overdueCount ? ' <span class="overdue-tag">⚠ ' + overdueCount + ' 项逾期</span>' : "");
+  if (overdueCount) {
+    body = '<div class="overdue-banner">⚠️ 有 ' + overdueCount + ' 项待办已过期未完成,请尽快处理</div>' + body;
+  }
+  return sectionCard("todos", "✅", "待办时间线", summary, body);
 }
 
 function toggleTodo(tripId, idx) {

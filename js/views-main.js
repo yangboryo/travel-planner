@@ -33,6 +33,7 @@ function renderTripList() {
     '<h1 class="page-title">我的行程</h1>' +
     '<button class="add-btn" onclick="openNewTripSheet()">+</button></div>';
 
+  html += renderHomeWeather();
   html += renderReminders(upcoming);
 
   if (upcoming.length) {
@@ -65,6 +66,91 @@ function renderTripList() {
   }
 
   body.innerHTML = html;
+}
+
+/* ---------- 城市搜索选择器(通用底部抽屉) ---------- */
+
+function openCitySearch(title, onPick) {
+  var overlay = document.createElement("div");
+  overlay.className = "sheet-overlay";
+  overlay.innerHTML = '<div class="sheet" onclick="event.stopPropagation()">' +
+    '<div class="sheet-title">' + title + '</div>' +
+    '<div class="pack-add" style="margin-top:0;">' +
+    '<input id="cs-input" class="field-input" placeholder="输入城市名,如:悉尼 / 香港 / Tokyo">' +
+    '<button class="btn-primary pack-add-btn" id="cs-btn">搜索</button></div>' +
+    '<div id="cs-results"></div>' +
+    '</div>';
+  overlay.addEventListener("click", function () { overlay.remove(); });
+  document.querySelector(".phone").appendChild(overlay);
+
+  function doSearch() {
+    var q = document.getElementById("cs-input").value.trim();
+    if (!q) return;
+    var box = document.getElementById("cs-results");
+    box.innerHTML = '<div class="empty-inline">搜索中…</div>';
+    searchCities(q, function (results) {
+      if (!results.length) {
+        box.innerHTML = '<div class="empty-inline">没找到,换个写法试试(支持中英文)</div>';
+        return;
+      }
+      box.innerHTML = results.map(function (r, i) {
+        var region = [r.admin1, r.country].filter(Boolean).join(" · ");
+        return '<div class="city-result" data-i="' + i + '">' +
+          '<span class="wish-type">' + flagEmoji(r.country_code) + '</span>' +
+          '<div style="flex:1"><div>' + r.name + '</div>' +
+          '<div class="tip-label">' + region + '</div></div></div>';
+      }).join("");
+      box.querySelectorAll(".city-result").forEach(function (el) {
+        el.addEventListener("click", function () {
+          var r = results[parseInt(el.dataset.i, 10)];
+          overlay.remove();
+          onPick({ name: r.name, country: r.country || "", countryCode: r.country_code || "",
+            lat: r.latitude, lon: r.longitude });
+        });
+      });
+    });
+  }
+  document.getElementById("cs-btn").addEventListener("click", doSearch);
+  document.getElementById("cs-input").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") doSearch();
+  });
+  document.getElementById("cs-input").focus();
+}
+
+/* ---------- 主界面双城天气条 ---------- */
+
+function renderHomeWeather() {
+  var p = getPassport();
+  var slots = [
+    { label: "常住地", loc: p.homeLoc, id: "hw-home" },
+    { label: "所在地", loc: p.currentLoc, id: "hw-cur" }
+  ];
+  var html = '<div class="dual-weather">' + slots.map(function (s) {
+    if (!s.loc) {
+      return '<div class="dw-chip empty" onclick="goProfile()">' +
+        '<div class="dw-label">' + s.label + '</div>' +
+        '<div class="dw-main">点击设置</div></div>';
+    }
+    return '<div class="dw-chip" id="' + s.id + '" onclick="goProfile()">' +
+      '<div class="dw-label">' + s.label + ' · ' + s.loc.name + '</div>' +
+      '<div class="dw-main">…</div></div>';
+  }).join("") + "</div>";
+
+  /* 异步填充温度 */
+  setTimeout(function () {
+    slots.forEach(function (s) {
+      if (!s.loc) return;
+      fetchCurrentWeather(s.loc, function (w) {
+        var el = document.getElementById(s.id);
+        if (!el) return;
+        el.querySelector(".dw-main").innerHTML = w
+          ? wmoInfo(w.code).icon + " " + w.temp + "°C · " + wmoInfo(w.code).desc
+          : "离线 · 暂无数据";
+      });
+    });
+  }, 0);
+
+  return html;
 }
 
 /* ---------- 主界面出行提醒 ---------- */
@@ -228,8 +314,12 @@ function renderProfile() {
     '<span class="profile-key">国籍</span><span>' + (p.nationality || '<span style="color:var(--text-faint)">点击设置</span>') + '</span></div>' +
     '<div class="profile-row lodging-row" onclick="editPassport(\'expiry\',\'护照有效期(如 2031-05-20)\')">' +
     '<span class="profile-key">护照有效期至</span><span>' + (p.expiry || '<span style="color:var(--text-faint)">点击设置</span>') + '</span></div>' +
-    '<div class="profile-row lodging-row" onclick="editHome()">' +
-    '<span class="profile-key">常住地(用于插座提醒)</span><span>' + (p.home || '<span style="color:var(--text-faint)">点击设置</span>') + '</span></div>' +
+    '<div class="profile-row lodging-row" onclick="pickHomeLoc()">' +
+    '<span class="profile-key">常住地(插座/天气)</span><span>' +
+    (p.homeLoc ? p.homeLoc.name + " · " + p.homeLoc.country : '<span style="color:var(--text-faint)">点击设置</span>') + '</span></div>' +
+    '<div class="profile-row lodging-row" onclick="pickCurrentLoc()">' +
+    '<span class="profile-key">现在所在地(天气)</span><span>' +
+    (p.currentLoc ? p.currentLoc.name + " · " + p.currentLoc.country : '<span style="color:var(--text-faint)">点击设置</span>') + '</span></div>' +
     expiryHTML +
     '</div>';
 
@@ -266,18 +356,18 @@ function editPassport(key, label) {
   renderProfile();
 }
 
-function editHome() {
-  var options = Object.keys(APP_DATA.homePlugs).join(" / ");
-  var cur = getPassport().home || "";
-  var val = prompt("设置常住地(支持:" + options + ")", cur);
-  if (val === null) return;
-  val = val.trim();
-  if (val && !APP_DATA.homePlugs[val]) {
-    alert("暂不认识这个地区的插座制式,目前支持:" + options);
-    return;
-  }
-  setPassportField("home", val);
-  renderProfile();
+function pickHomeLoc() {
+  openCitySearch("设置常住地", function (loc) {
+    setPassportField("homeLoc", loc);
+    renderProfile();
+  });
+}
+
+function pickCurrentLoc() {
+  openCitySearch("设置现在所在地", function (loc) {
+    setPassportField("currentLoc", loc);
+    renderProfile();
+  });
 }
 
 function fxOptions(selected) {
@@ -304,19 +394,17 @@ function fxConvert(from) {
 
 /* ---------- 新建行程抽屉 ---------- */
 
-var FLAG_OPTIONS = ["🇭🇰", "🇯🇵", "🇹🇭", "🇸🇬", "🇨🇳", "🇦🇺", "🇺🇸", "🇬🇧", "🇫🇷", "🌍"];
+var NT_SELECTED = null; /* 新建行程时选中的城市 */
 
 function openNewTripSheet() {
+  NT_SELECTED = null;
   var overlay = document.createElement("div");
   overlay.className = "sheet-overlay";
   overlay.innerHTML = '<div class="sheet" onclick="event.stopPropagation()">' +
     '<div class="sheet-title">新建行程</div>' +
     '<label class="field-label">目的地城市</label>' +
-    '<input id="nt-city" class="field-input" placeholder="如:新加坡">' +
-    '<label class="field-label">国旗</label>' +
-    '<div class="flag-row">' + FLAG_OPTIONS.map(function (f, i) {
-      return '<span class="flag-opt' + (i === 0 ? " selected" : "") + '" onclick="selectFlag(this)">' + f + "</span>";
-    }).join("") + '</div>' +
+    '<div id="nt-city-display" class="field-input nt-city-pick" onclick="pickTripCity()">' +
+    '<span style="color:var(--text-faint)">点击搜索城市(全球)</span></div>' +
     '<label class="field-label">币种</label>' +
     '<select id="nt-currency" class="field-input">' +
     Object.keys(APP_DATA.fxRates).filter(function (c) { return c !== "AUD"; })
@@ -332,23 +420,27 @@ function openNewTripSheet() {
   document.querySelector(".phone").appendChild(overlay);
 }
 
-function selectFlag(el) {
-  document.querySelectorAll(".flag-opt").forEach(function (f) { f.classList.remove("selected"); });
-  el.classList.add("selected");
+function pickTripCity() {
+  openCitySearch("选择目的地城市", function (loc) {
+    NT_SELECTED = loc;
+    var el = document.getElementById("nt-city-display");
+    if (el) el.innerHTML = flagEmoji(loc.countryCode) + " " + loc.name + ' <span class="tip-label">' + loc.country + "</span>";
+  });
 }
 
 function submitNewTrip() {
-  var city = document.getElementById("nt-city").value.trim();
   var start = document.getElementById("nt-start").value;
   var end = document.getElementById("nt-end").value;
   var currency = document.getElementById("nt-currency").value;
-  var flag = document.querySelector(".flag-opt.selected").textContent;
-  if (!city || !start || !end) { alert("请填写目的地和起止日期"); return; }
+  if (!NT_SELECTED || !start || !end) { alert("请选择目的地城市并填写起止日期"); return; }
+  var city = NT_SELECTED.name;
+  var flag = flagEmoji(NT_SELECTED.countryCode);
   if (new Date(end) < new Date(start)) { alert("返回日期不能早于出发日期"); return; }
 
   var trip = {
     id: "trip-" + Date.now(),
     city: city, flag: flag, currency: currency,
+    loc: { lat: NT_SELECTED.lat, lon: NT_SELECTED.lon, country: NT_SELECTED.country },
     startDate: start, endDate: end,
     weather: [], todos: [
       { offsetDays: 30, text: "预订酒店", done: false },

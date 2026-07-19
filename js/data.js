@@ -42,6 +42,7 @@ const APP_DATA = {
     {
       id: "hk-2026-08",
       city: "香港",
+      loc: { lat: 22.3193, lon: 114.1694, country: "中国香港" },
       flag: "🇭🇰",
       currency: "HKD",
       startDate: "2026-08-12",
@@ -107,6 +108,7 @@ const APP_DATA = {
     {
       id: "tokyo-2026-10",
       city: "东京",
+      loc: { lat: 35.6762, lon: 139.6503, country: "日本" },
       flag: "🇯🇵",
       currency: "JPY",
       startDate: "2026-10-14",
@@ -160,6 +162,7 @@ const APP_DATA = {
     {
       id: "bkk-2026-03",
       city: "曼谷",
+      loc: { lat: 13.7563, lon: 100.5018, country: "泰国" },
       flag: "🇹🇭",
       currency: "THB",
       startDate: "2026-03-06",

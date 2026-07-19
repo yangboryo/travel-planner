@@ -19,7 +19,9 @@ if (STATE.passport.home === undefined) STATE.passport.home = "";
 
 /* 插座兼容判断:两地 type 字母有交集即兼容 */
 function plugCheck(city) {
-  var home = getPassport().home;
+  var p = getPassport();
+  /* 优先用常住地城市的国家,回退旧的手填字段 */
+  var home = (p.homeLoc && p.homeLoc.country) || p.home;
   var dest = APP_DATA.plugTypes[city];
   if (!home || !dest) return null;
   var homePlug = APP_DATA.homePlugs[home];
@@ -50,6 +52,89 @@ function getTrip(id) {
 function addTrip(trip) {
   STATE.trips.push(trip);
   saveState();
+}
+
+/* ---------- 天气服务(Open-Meteo,免费无密钥) ---------- */
+
+if (!STATE.weatherCache) STATE.weatherCache = {};
+
+/* WMO 天气代码 → 图标与描述 */
+function wmoInfo(code) {
+  if (code === 0) return { icon: "☀️", desc: "晴" };
+  if (code <= 2) return { icon: "🌤", desc: "多云转晴" };
+  if (code === 3) return { icon: "☁️", desc: "阴" };
+  if (code === 45 || code === 48) return { icon: "🌫", desc: "雾" };
+  if (code >= 51 && code <= 57) return { icon: "🌦", desc: "毛毛雨" };
+  if (code >= 61 && code <= 67) return { icon: "🌧", desc: "雨" };
+  if (code >= 71 && code <= 77) return { icon: "🌨", desc: "雪" };
+  if (code >= 80 && code <= 82) return { icon: "🌦", desc: "阵雨" };
+  if (code >= 95) return { icon: "⛈", desc: "雷阵雨" };
+  return { icon: "🌤", desc: "—" };
+}
+
+/* 当前天气(带 30 分钟缓存,离线回退缓存) */
+function fetchCurrentWeather(loc, cb) {
+  if (!loc || loc.lat == null) { cb(null); return; }
+  var key = "cur:" + loc.lat.toFixed(2) + "," + loc.lon.toFixed(2);
+  var cached = STATE.weatherCache[key];
+  if (cached && Date.now() - cached.at < 30 * 60000) { cb(cached.data); return; }
+  fetch("https://api.open-meteo.com/v1/forecast?latitude=" + loc.lat + "&longitude=" + loc.lon +
+    "&current=temperature_2m,weather_code&timezone=auto")
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      var data = { temp: Math.round(j.current.temperature_2m), code: j.current.weather_code };
+      STATE.weatherCache[key] = { at: Date.now(), data: data };
+      saveState();
+      cb(data);
+    })
+    .catch(function () { cb(cached ? cached.data : null); });
+}
+
+/* 日期区间预报(Open-Meteo 可预报未来 16 天) */
+function fetchForecast(loc, startDate, endDate, cb) {
+  if (!loc || loc.lat == null) { cb(null); return; }
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var max = new Date(today); max.setDate(max.getDate() + 15);
+  var s = new Date(startDate), e = new Date(endDate);
+  if (s > max) { cb(null); return; } /* 太远,无法预报 */
+  var clampEnd = e > max ? toDateStr(max) : endDate;
+  var clampStart = s < today ? toDateStr(today) : startDate;
+  var key = "fc:" + loc.lat.toFixed(2) + "," + loc.lon.toFixed(2) + ":" + clampStart + ":" + clampEnd;
+  var cached = STATE.weatherCache[key];
+  if (cached && Date.now() - cached.at < 60 * 60000) { cb(cached.data); return; }
+  fetch("https://api.open-meteo.com/v1/forecast?latitude=" + loc.lat + "&longitude=" + loc.lon +
+    "&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto" +
+    "&start_date=" + clampStart + "&end_date=" + clampEnd)
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      var days = j.daily.time.map(function (d, i) {
+        var w = wmoInfo(j.daily.weather_code[i]);
+        return { date: d, icon: w.icon, desc: w.desc,
+          high: Math.round(j.daily.temperature_2m_max[i]),
+          low: Math.round(j.daily.temperature_2m_min[i]) };
+      });
+      STATE.weatherCache[key] = { at: Date.now(), data: days };
+      saveState();
+      cb(days);
+    })
+    .catch(function () { cb(cached ? cached.data : null); });
+}
+
+/* 城市搜索(中文优先) */
+function searchCities(query, cb) {
+  fetch("https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(query) +
+    "&count=6&language=zh&format=json")
+    .then(function (r) { return r.json(); })
+    .then(function (j) { cb(j.results || []); })
+    .catch(function () { cb([]); });
+}
+
+/* ISO 国家码 → 国旗 emoji */
+function flagEmoji(cc) {
+  if (!cc || cc.length !== 2) return "🌍";
+  return String.fromCodePoint.apply(null, cc.toUpperCase().split("").map(function (c) {
+    return 0x1F1E6 + c.charCodeAt(0) - 65;
+  }));
 }
 
 /* ---------- 导航 ---------- */

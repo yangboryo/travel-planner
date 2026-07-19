@@ -26,6 +26,34 @@
 .trip-dates { font-size: 13px; color: var(--text-sub); margin-top: 2px; }
 .trip-badges { margin-top: 10px; display: flex; gap: 8px; }
 
+/* 双城天气条 */
+.dual-weather { display: flex; gap: 10px; margin-top: 14px; }
+.dw-chip {
+  flex: 1;
+  background: var(--primary-grad);
+  border-radius: 14px;
+  padding: 12px 14px;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(74, 144, 217, 0.3);
+}
+.dw-chip.empty { background: #E8EFF7; color: var(--text-sub); box-shadow: none; }
+.dw-label { font-size: 11px; opacity: 0.85; }
+.dw-main { font-size: 15px; font-weight: 700; margin-top: 3px; }
+
+/* 城市搜索结果 */
+.city-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 4px;
+  border-bottom: 1px solid #F2F6FB;
+  cursor: pointer;
+  font-size: 15px;
+}
+.city-result:active { background: #F5F9FE; }
+.nt-city-pick { cursor: pointer; min-height: 42px; display: flex; align-items: center; gap: 6px; }
+
 .reminder-card {
   display: flex;
   align-items: flex-start;
@@ -170,6 +198,35 @@
 .todo-item.overdue { border-left-color: var(--danger); }
 .todo-item.overdue .todo-text, .todo-item.overdue .todo-date { color: var(--danger); }
 .todo-item .todo-text em { font-style: normal; font-size: 11px; background: #FCE9E9; border-radius: 6px; padding: 1px 6px; }
+
+/* 逾期标记 */
+.overdue-tag {
+  color: #fff;
+  background: var(--danger);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.overdue-banner {
+  background: #FCE9E9;
+  color: var(--danger);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 13px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+/* 目的地当前天气 */
+.tw-now {
+  font-size: 14px;
+  font-weight: 600;
+  background: #F5F9FE;
+  border-radius: 10px;
+  padding: 9px 12px;
+  margin-bottom: 10px;
+}
 
 /* 打包清单 */
 .pack-item {
