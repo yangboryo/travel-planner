@@ -405,7 +405,7 @@ function openNewTripSheet() {
     '<label class="field-label">目的地城市</label>' +
     '<div id="nt-city-display" class="field-input nt-city-pick" onclick="pickTripCity()">' +
     '<span style="color:var(--text-faint)">点击搜索城市(全球)</span></div>' +
-    '<label class="field-label">币种</label>' +
+    '<label class="field-label">币种（选完目的地自动匹配）</label>' +
     '<select id="nt-currency" class="field-input">' +
     Object.keys(APP_DATA.fxRates).filter(function (c) { return c !== "AUD"; })
       .map(function (c) { return '<option>' + c + "</option>"; }).join("") +
@@ -425,6 +425,12 @@ function pickTripCity() {
     NT_SELECTED = loc;
     var el = document.getElementById("nt-city-display");
     if (el) el.innerHTML = flagEmoji(loc.countryCode) + " " + loc.name + ' <span class="tip-label">' + loc.country + "</span>";
+    /* 根据目的地国家自动匹配币种 */
+    var autoCur = APP_DATA.countryCurrencies[loc.country];
+    if (autoCur) {
+      var sel = document.getElementById("nt-currency");
+      if (sel) sel.value = autoCur;
+    }
   });
 }
 

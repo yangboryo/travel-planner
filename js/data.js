@@ -5,7 +5,16 @@ const APP_DATA = {
   passport: { nationality: "", expiry: "" },
 
   /* 相对 AUD 的汇率:1 AUD = rate 单位外币 */
-  fxRates: { AUD: 1, HKD: 5.1, JPY: 97, THB: 23.5, CNY: 4.7, SGD: 0.88 },
+  fxRates: { AUD: 1, HKD: 5.1, MOP: 5.25, JPY: 97, THB: 23.5, CNY: 4.7, SGD: 0.88, KRW: 930, USD: 0.65, EUR: 0.61, GBP: 0.52, TWD: 21, MYR: 3.1, VND: 16400, IDR: 10500, PHP: 38 },
+
+  /* 国家 → 默认币种，新建行程时自动匹配(可手动改) */
+  countryCurrencies: {
+    "中国": "CNY", "中国香港": "HKD", "中国澳门": "MOP", "中国台湾": "TWD",
+    "日本": "JPY", "泰国": "THB", "新加坡": "SGD", "韩国": "KRW",
+    "美国": "USD", "英国": "GBP", "澳大利亚": "AUD",
+    "马来西亚": "MYR", "越南": "VND", "印度尼西亚": "IDR", "菲律宾": "PHP",
+    "法国": "EUR", "德国": "EUR", "意大利": "EUR", "西班牙": "EUR", "荷兰": "EUR"
+  },
 
   /* 目的地 → 签证规则(示例数据,实际以用户护照国籍对应规则为准) */
   visaRules: {

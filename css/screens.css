@@ -458,4 +458,6 @@
   border: 2px solid transparent;
 }
 .flag-opt.selected { border-color: var(--primary); background: #EAF3FC; }
-.date-row { display: flex; gap: 10px; }
+.date-row { display: flex; gap: 8px; }
+.date-row > div { flex: 1; min-width: 0; }
+.date-row .field-input { font-size: 14px; padding: 10px 6px; }
