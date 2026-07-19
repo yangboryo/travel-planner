@@ -54,6 +54,18 @@ function addTrip(trip) {
   saveState();
 }
 
+function deleteTrip(id) {
+  STATE.trips = STATE.trips.filter(function (t) { return t.id !== id; });
+  saveState();
+}
+
+function updateTrip(id, updates) {
+  var trip = getTrip(id);
+  if (!trip) return;
+  Object.keys(updates).forEach(function (k) { trip[k] = updates[k]; });
+  saveState();
+}
+
 /* ---------- 天气服务(Open-Meteo,免费无密钥) ---------- */
 
 if (!STATE.weatherCache) STATE.weatherCache = {};

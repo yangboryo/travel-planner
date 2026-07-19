@@ -49,7 +49,9 @@ function renderTripList() {
         '<div class="trip-badges">' +
         (w ? '<span class="badge">' + w.icon + " " + w.high + "°</span>" : "") +
         (prog ? '<span class="badge">清单 ' + prog + '</span>' : "") +
-        '</div></div>';
+        '</div>' +
+        '<span class="trip-del" onclick="event.stopPropagation();delTrip(\'' + t.id + '\')" title="删除">✕</span>' +
+        '</div>';
     });
   }
 
@@ -57,7 +59,8 @@ function renderTripList() {
     html += '<div class="section-label">历史行程</div>';
     past.forEach(function (t) {
       html += '<div class="past-trip" onclick="openTripDetail(\'' + t.id + '\')">' +
-        t.city + " " + t.flag + ' · ' + fmtDateRange(t.startDate, t.endDate) + '</div>';
+        t.city + " " + t.flag + ' · ' + fmtDateRange(t.startDate, t.endDate) +
+        '<span class="trip-del" onclick="event.stopPropagation();delTrip(\'' + t.id + '\')" title="删除">✕</span></div>';
     });
   }
 
@@ -425,8 +428,8 @@ function pickTripCity() {
     NT_SELECTED = loc;
     var el = document.getElementById("nt-city-display");
     if (el) el.innerHTML = flagEmoji(loc.countryCode) + " " + loc.name + ' <span class="tip-label">' + loc.country + "</span>";
-    /* 根据目的地国家自动匹配币种 */
-    var autoCur = APP_DATA.countryCurrencies[loc.country];
+    /* 根据目的地国家自动匹配币种(先中文名,再 ISO 码保底) */
+    var autoCur = APP_DATA.countryCurrencies[loc.country] || APP_DATA.countryCodeCurrencies[loc.countryCode];
     if (autoCur) {
       var sel = document.getElementById("nt-currency");
       if (sel) sel.value = autoCur;
@@ -467,4 +470,72 @@ function submitNewTrip() {
   addTrip(trip);
   document.querySelector(".sheet-overlay").remove();
   renderTripList();
+}
+
+/* 删除行程(确认后) */
+function delTrip(id) {
+  var trip = getTrip(id);
+  if (!trip) return;
+  if (!confirm("确定删除「" + trip.flag + " " + trip.city + "」行程吗？")) return;
+  deleteTrip(id);
+  renderTripList();
+}
+
+/* 编辑行程(弹窗,预填已有数据) */
+function openEditTripSheet(tripId) {
+  var trip = getTrip(tripId);
+  if (!trip) return;
+  NT_SELECTED = { name: trip.city, country: trip.loc.country, countryCode: "",
+    lat: trip.loc.lat, lon: trip.loc.lon };
+  var overlay = document.createElement("div");
+  overlay.className = "sheet-overlay";
+  overlay.innerHTML = '<div class="sheet" onclick="event.stopPropagation()">' +
+    '<div class="sheet-title">编辑行程</div>' +
+    '<label class="field-label">目的地城市</label>' +
+    '<div id="nt-city-display" class="field-input nt-city-pick" onclick="pickTripCity()">' +
+    trip.flag + ' ' + trip.city + ' <span class="tip-label">' + (trip.loc.country || '') + '</span></div>' +
+    '<label class="field-label">币种（选完目的地自动匹配）</label>' +
+    '<select id="nt-currency" class="field-input">' +
+    Object.keys(APP_DATA.fxRates).filter(function (c) { return c !== "AUD"; })
+      .map(function (c) { return '<option' + (c === trip.currency ? ' selected' : '') + '>' + c + '</option>'; }).join("") +
+    '</select>' +
+    '<div class="date-row">' +
+    '<div><label class="field-label">出发日期</label><input id="nt-start" type="date" class="field-input" value="' + trip.startDate + '"></div>' +
+    '<div><label class="field-label">返回日期</label><input id="nt-end" type="date" class="field-input" value="' + trip.endDate + '"></div>' +
+    '</div>' +
+    '<div style="display:flex;gap:10px;margin-top:16px;">' +
+    '<button class="btn-primary" style="flex:1" onclick="submitEditTrip(\'' + tripId + '\')">保存</button>' +
+    '<button class="btn-danger" style="flex:1" onclick="delTripFromEdit(\'' + tripId + '\')">删除行程</button>' +
+    '</div>' +
+    '</div>';
+  overlay.addEventListener("click", function () { overlay.remove(); });
+  document.querySelector(".phone").appendChild(overlay);
+}
+
+function submitEditTrip(tripId) {
+  var trip = getTrip(tripId);
+  if (!trip) return;
+  var start = document.getElementById("nt-start").value;
+  var end = document.getElementById("nt-end").value;
+  var currency = document.getElementById("nt-currency").value;
+  if (!start || !end) { alert("请填写起止日期"); return; }
+  if (new Date(end) < new Date(start)) { alert("返回日期不能早于出发日期"); return; }
+
+  var updates = { startDate: start, endDate: end, currency: currency };
+  /* 如果重新选了目的地城市,也更新 */
+  if (NT_SELECTED && NT_SELECTED.name !== trip.city) {
+    updates.city = NT_SELECTED.name;
+    updates.flag = flagEmoji(NT_SELECTED.countryCode);
+    updates.loc = { lat: NT_SELECTED.lat, lon: NT_SELECTED.lon, country: NT_SELECTED.country };
+  }
+  updateTrip(tripId, updates);
+  document.querySelector(".sheet-overlay").remove();
+  refreshTripDetail();
+  renderTripList();
+}
+
+function delTripFromEdit(tripId) {
+  document.querySelector(".sheet-overlay").remove();
+  delTrip(tripId);
+  closeTripDetail();
 }

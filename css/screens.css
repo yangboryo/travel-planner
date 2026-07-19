@@ -461,3 +461,85 @@
 .date-row { display: flex; gap: 8px; }
 .date-row > div { flex: 1; min-width: 0; }
 .date-row .field-input { font-size: 14px; padding: 10px 6px; }
+
+/* ---------- 行程卡片删除按钮 ---------- */
+
+.trip-card { position: relative; }
+.trip-del {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #F0F2F5;
+  color: var(--text-faint);
+  font-size: 12px;
+  line-height: 24px;
+  text-align: center;
+  cursor: pointer;
+  z-index: 2;
+}
+.trip-del:hover { background: var(--danger); color: #fff; }
+.past-trip { position: relative; }
+.past-trip .trip-del { top: 50%; transform: translateY(-50%); }
+
+/* ---------- 小按钮 / 危险按钮 ---------- */
+
+.btn-sm {
+  border: 1px solid #DCE5F0;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-sub);
+  cursor: pointer;
+}
+.btn-sm:active { background: #F0F4F9; }
+.btn-danger {
+  border: none;
+  background: #fff;
+  border: 1px solid var(--danger);
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--danger);
+  cursor: pointer;
+}
+.btn-danger:active { background: #FCE9E9; }
+
+/* ---------- 当地推荐(景点/美食) ---------- */
+
+.rec-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-sub);
+  margin-bottom: 6px;
+}
+.rec-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #F2F6FB;
+}
+.rec-item:last-child { border-bottom: none; }
+.rec-item.added { background: #F8FBFE; border-radius: 8px; padding: 10px 6px; }
+.rec-type { font-size: 20px; flex-shrink: 0; }
+.rec-info { flex: 1; min-width: 0; }
+.rec-name { font-size: 14px; font-weight: 600; }
+.rec-desc { font-size: 12px; color: var(--text-sub); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rec-add {
+  font-size: 11px;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  border-radius: 999px;
+  padding: 3px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.rec-add.done { background: #EAF7F0; border-color: #3D8B5F; color: #3D8B5F; }
+.rec-add:active { background: #EAF3FC; }

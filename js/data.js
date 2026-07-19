@@ -16,6 +16,15 @@ const APP_DATA = {
     "法国": "EUR", "德国": "EUR", "意大利": "EUR", "西班牙": "EUR", "荷兰": "EUR"
   },
 
+  /* ISO 国家码 → 币种(保底匹配,API 返回的中文国家名可能不一致) */
+  countryCodeCurrencies: {
+    "CN": "CNY", "HK": "HKD", "MO": "MOP", "TW": "TWD",
+    "JP": "JPY", "TH": "THB", "SG": "SGD", "KR": "KRW",
+    "US": "USD", "GB": "GBP", "AU": "AUD",
+    "MY": "MYR", "VN": "VND", "ID": "IDR", "PH": "PHP",
+    "FR": "EUR", "DE": "EUR", "IT": "EUR", "ES": "EUR", "NL": "EUR"
+  },
+
   /* 目的地 → 签证规则(示例数据,实际以用户护照国籍对应规则为准) */
   visaRules: {
     "香港": { type: "免签", stayDays: 90, applyAheadDays: 0 },
@@ -45,6 +54,74 @@ const APP_DATA = {
     "美国": { type: "AB", desc: "两脚扁插" },
     "英国": { type: "G", desc: "英式三脚方插" },
     "新西兰": { type: "I", desc: "八字两脚扁插" }
+  },
+
+  /* 目的地 → 景点/美食推荐 */
+  localRecommendations: {
+    "香港": {
+      spots: [
+        { name: "维多利亚港", type: "🏞", desc: "世界三大夜景之一，每晚幻彩咏香江灯光秀" },
+        { name: "太平山顶", type: "🏔", desc: "俯瞰维港全景，山顶缆车体验" },
+        { name: "迪士尼乐园", type: "🎢", desc: "全球最小迪士尼，适合一日游" },
+        { name: "海洋公园", type: "🎢", desc: "海滨缆车+海洋剧场+熊猫馆" },
+        { name: "天坛大佛", type: "🛕", desc: "大屿山宝莲禅寺，世界最高户外青铜坐佛" }
+      ],
+      food: [
+        { name: "添好运点心", type: "🥟", desc: "最平价米其林，酥皮叉烧包必点" },
+        { name: "镛记烧鹅", type: "🦆", desc: "中环老字号，金牌烧鹅驰名中外" },
+        { name: "兰芳园", type: "🥤", desc: "丝袜奶茶发源地，港式茶餐厅代表" },
+        { name: "阿甘虾餐厅", type: "🍤", desc: "凌霄阁内美式海鲜，配维港景观" },
+        { name: "澳洲牛奶公司", type: "🍳", desc: "炖奶+炒蛋多士，地道港式早餐" }
+      ]
+    },
+    "东京": {
+      spots: [
+        { name: "浅草寺", type: "🛕", desc: "东京最古老寺庙，雷门灯笼打卡" },
+        { name: "晴空塔", type: "🗼", desc: "634米世界第一高塔，360度展望台" },
+        { name: "涩谷十字路口", type: "🏙", desc: "世界最繁忙路口，涩谷天空展望台" },
+        { name: "筑地场外市场", type: "🏪", desc: "东京厨房，新鲜海鲜+寿司朝食" },
+        { name: "秋叶原", type: "🕹", desc: "电器街+动漫圣地，女仆咖啡体验" }
+      ],
+      food: [
+        { name: "一兰拉面", type: "🍜", desc: "博多豚骨拉面，一人一格独享体验" },
+        { name: "筑地寿司大", type: "🍣", desc: "场外市场排队名店，板前握寿司" },
+        { name: "天丼金子半之助", type: "🍤", desc: "日本桥排队天丼，炸虾+穴子豪华碗" },
+        { name: "叙叙苑烧肉", type: "🥩", desc: "高级和牛烧肉，午市套餐超值" },
+        { name: "AFURI 柚子盐拉面", type: "🍜", desc: "清爽柚子风味，中目黑潮流拉面" }
+      ]
+    },
+    "曼谷": {
+      spots: [
+        { name: "大皇宫", type: "🛕", desc: "曼谷地标，玉佛寺+壁画长廊" },
+        { name: "卧佛寺", type: "🛕", desc: "46米金卧佛，泰式按摩发源地" },
+        { name: "黎明寺", type: "🗼", desc: "昭披耶河畔黎明寺（郑王庙），日落绝美" },
+        { name: "洽图洽周末市集", type: "🏪", desc: "15000+摊位，世界最大周末市场" },
+        { name: "暹罗广场", type: "🛍", desc: "曼谷潮流中心，购物+美食集合地" }
+      ],
+      food: [
+        { name: "水门市场海南鸡饭", type: "🍗", desc: "曼谷第一海南鸡饭，排队必吃" },
+        { name: "Jay Fai", type: "🦀", desc: "米其林一星街边摊，蟹肉蛋卷传奇" },
+        { name: "Pe Aor 冬阴功", type: "🍲", desc: "龙虾冬阴功面，汤底浓郁" },
+        { name: "After You 甜品", type: "🍧", desc: "蜜糖吐司+泰奶刨冰，网红打卡" },
+        { name: "Thip Samai 蛋包炒粉", type: "🍝", desc: "曼谷最老 Pad Thai 店，蛋皮包裹" }
+      ]
+    },
+    "新加坡": {
+      spots: [
+        { name: "滨海湾花园", type: "🌿", desc: "超级树灯光秀+云雾林温室" },
+        { name: "圣淘沙岛", type: "🏖", desc: "环球影城+S.E.A.海洋馆+沙滩" },
+        { name: "鱼尾狮公园", type: "🦁", desc: "新加坡地标，滨海湾天际线" },
+        { name: "牛车水", type: "🏘", desc: "唐人街，佛牙寺+麦士威熟食中心" },
+        { name: "乌节路", type: "🛍", desc: "购物天堂，ION+义安城+百利宫" }
+      ],
+      food: [
+        { name: "天天海南鸡饭", type: "🍗", desc: "麦士威熟食中心排队王，滑嫩鸡饭" },
+        { name: "松发肉骨茶", type: "🍖", desc: "胡椒味肉骨茶，汤浓骨酥" },
+        { name: "328 加东叻沙", type: "🍜", desc: "椰浆叻沙，椰奶浓郁+蚶肉鲜甜" },
+        { name: "珍宝海鲜", type: "🦀", desc: "辣椒螃蟹+黑胡椒蟹，新加坡名片" },
+        { name: "亚坤咖椰吐司", type: "🥪", desc: "咖椰酱+牛油烤吐司+半熟蛋" }
+      ]
+    }
   },
 
   trips: [

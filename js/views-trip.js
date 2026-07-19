@@ -24,7 +24,9 @@ function renderTripDetail(trip) {
   var body = document.querySelector("#screen-trip-detail .screen-body");
   var cd = daysUntil(trip.startDate);
 
-  var html = '<button class="back-btn" onclick="closeTripDetail()">‹ 行程</button>';
+  var html = '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+    '<button class="back-btn" onclick="closeTripDetail()">‹ 行程</button>' +
+    '<button class="btn-sm" onclick="openEditTripSheet(\'' + trip.id + '\')">✎ 编辑</button></div>';
 
   /* 头图 */
   html += '<div class="detail-hero">' +
@@ -67,6 +69,7 @@ function renderSections(trip) {
   if (typeof sectionBudget === "function") html += sectionBudget(trip);
   if (typeof sectionEmergency === "function") html += sectionEmergency(trip);
   if (typeof sectionTips === "function") html += sectionTips(trip);
+  if (typeof sectionLocalRecs === "function") html += sectionLocalRecs(trip);
   return html;
 }
 
@@ -439,6 +442,78 @@ function sectionTips(trip) {
       '<div class="tip-val">' + (r.val || "—") + '</div></div></div>';
   }).join("");
   return sectionCard("tips", "🔌", "目的地小贴士", "", body);
+}
+
+/* ---------- 板块:当地景点 & 美食推荐 ---------- */
+
+function sectionLocalRecs(trip) {
+  var recs = APP_DATA.localRecommendations[trip.city];
+  if (!recs && !trip.city) return "";
+
+  /* 如果目的地不在内置推荐中,给个提示 */
+  if (!recs) {
+    return sectionCard("localrecs", "🏙", "当地推荐", "暂无内置数据",
+      '<div class="empty-inline">该目的地暂无内置景点/美食推荐，欢迎在想去清单中手动添加 ✨</div>');
+  }
+
+  /* 检查已加入想去清单的项目 */
+  var wishNames = (trip.wishlist || []).map(function (w) { return w.name; });
+
+  var body = "";
+
+  if (recs.spots && recs.spots.length) {
+    body += '<div class="rec-label">🏞 景点</div>';
+    body += recs.spots.map(function (s) {
+      var added = wishNames.indexOf(s.name) !== -1;
+      return '<div class="rec-item' + (added ? " added" : "") + '">' +
+        '<span class="rec-type">' + s.type + '</span>' +
+        '<div class="rec-info"><div class="rec-name">' + s.name + '</div>' +
+        '<div class="rec-desc">' + s.desc + '</div></div>' +
+        '<span class="rec-add' + (added ? " done" : "") + '" onclick="addRecToWish(\'' + trip.id + '\',\'' +
+        s.name.replace(/'/g, "\\'") + '\',\'' + s.type + '\')">' +
+        (added ? '已添加' : '+ 想去') + '</span>' +
+        '</div>';
+    }).join("");
+  }
+
+  if (recs.food && recs.food.length) {
+    body += '<div class="rec-label" style="margin-top:8px;">🍜 美食</div>';
+    body += recs.food.map(function (f) {
+      var added = wishNames.indexOf(f.name) !== -1;
+      return '<div class="rec-item' + (added ? " added" : "") + '">' +
+        '<span class="rec-type">' + f.type + '</span>' +
+        '<div class="rec-info"><div class="rec-name">' + f.name + '</div>' +
+        '<div class="rec-desc">' + f.desc + '</div></div>' +
+        '<span class="rec-add' + (added ? " done" : "") + '" onclick="addRecToWish(\'' + trip.id + '\',\'' +
+        f.name.replace(/'/g, "\\'") + '\',\'' + f.type + '\')">' +
+        (added ? '已添加' : '+ 想去') + '</span>' +
+        '</div>';
+    }).join("");
+  }
+
+  var totalSpots = (recs.spots || []).length + (recs.food || []).length;
+  var addedCount = (recs.spots || []).concat(recs.food || []).filter(function (r) {
+    return wishNames.indexOf(r.name) !== -1;
+  }).length;
+
+  return sectionCard("localrecs", "🏙", "当地推荐 · " + trip.city,
+    addedCount ? addedCount + "/" + totalSpots + " 已收藏" : totalSpots + " 个推荐", body);
+}
+
+/* 将推荐项加入想去清单 */
+function addRecToWish(tripId, name, type) {
+  var trip = getTrip(tripId);
+  if (!trip) return;
+  if (!trip.wishlist) trip.wishlist = [];
+  var found = trip.wishlist.find(function (w) { return w.name === name; });
+  if (found) {
+    /* 已存在,移除 */
+    trip.wishlist = trip.wishlist.filter(function (w) { return w.name !== name; });
+  } else {
+    trip.wishlist.push({ name: name, type: type, scheduled: false });
+  }
+  saveState();
+  refreshTripDetail();
 }
 
 function refreshTripDetail() {
