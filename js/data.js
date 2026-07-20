@@ -331,3 +331,50 @@ const APP_DATA = {
     }
   ]
 };
+
+/* 目的地精选推荐。由现有内容迁移为统一 shape,后续可直接替换真实 API。 */
+(function () {
+  var cityMeta = {
+    "香港": { center: [22.3027, 114.1772], flight: 1400, hotel: 1850 },
+    "东京": { center: [35.6762, 139.6503], flight: 4200, hotel: 18000 },
+    "曼谷": { center: [13.7563, 100.5018], flight: 2600, hotel: 4200 },
+    "新加坡": { center: [1.3521, 103.8198], flight: 3600, hotel: 320 },
+    "腾冲": { center: [25.0203, 98.4973], flight: 1800, hotel: 520 }
+  };
+  APP_DATA.destinationRecs = {};
+  Object.keys(cityMeta).forEach(function (city) {
+    var meta = cityMeta[city], old = APP_DATA.localRecommendations[city];
+    APP_DATA.destinationRecs[city] = {
+      center: { lat: meta.center[0], lon: meta.center[1] },
+      transport: {
+        intercity: [{ mode: "flight", label: "直飞/中转参考", durationH: 3, tip: "建议提前比价",
+          cabins: [{ "class": "economy", priceLocal: meta.flight, note: "含税参考" },
+            { "class": "business", priceLocal: meta.flight * 3, note: "含税参考" }] }],
+        local: [{ mode: "metro", name: "公共交通", priceRange: "按当地票价", tier: "economy", tip: "优先使用交通卡" }]
+      },
+      lodging: [
+        { name: city + "市中心酒店", type: "hotel", area: "市中心", pricePerNight: meta.hotel,
+          tier: "comfort", location: "central", lat: meta.center[0], lon: meta.center[1], tags: ["市中心"], desc: "交通与用餐方便" },
+        { name: city + "近交通精品住宿", type: "boutique", area: "交通枢纽", pricePerNight: Math.round(meta.hotel * 0.8),
+          tier: "comfort", location: "near-transit", lat: meta.center[0] + 0.01, lon: meta.center[1] + 0.01,
+          tags: ["精品", "近交通"], desc: "适合重视出行效率的旅客" }
+      ],
+      dining: old.food.map(function (x, i) { return {
+        name: x.name, cuisineTags: ["local"], priceLevel: i % 3 + 1, rating: 4.7 - i * 0.1,
+        michelin: x.desc.indexOf("米其林") !== -1, area: "", lat: meta.center[0] + i * 0.002,
+        lon: meta.center[1] + i * 0.002, image: "", address: "", phone: "", website: "", hours: "", desc: x.desc
+      }; }),
+      attractions: old.spots.map(function (x, i) { return {
+        name: x.name, category: x.type, durationH: x.type.indexOf("🎢") !== -1 ? 5 : 1.5,
+        rating: 4.8 - i * 0.1, lat: meta.center[0] + i * 0.002, lon: meta.center[1] - i * 0.002,
+        image: "", address: "", phone: "", website: "", hours: "", desc: x.desc, tips: "",
+        bestFor: ["packed", "balanced", "relaxed"]
+      }; })
+    };
+  });
+  var hk = APP_DATA.destinationRecs["香港"].dining[0];
+  hk.address = "深水埗福荣街 9-11 号地铺";
+  hk.phone = "+852 2788 1226";
+  hk.website = "https://timhowan.com";
+  hk.hours = "10:00–21:30 · 每日营业";
+}());
