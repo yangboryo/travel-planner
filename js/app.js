@@ -1,6 +1,6 @@
 /* 应用层:store(localStorage)、导航切换、入口 */
 
-var APP_VERSION = "v11"; /* 与 sw.js 的 VERSION 保持一致 */
+var APP_VERSION = "v12"; /* 与 sw.js 的 VERSION 保持一致 */
 
 /* ---------- store ---------- */
 
@@ -222,13 +222,37 @@ function fetchForecast(loc, startDate, endDate, cb) {
     .catch(function () { cb(cached ? cached.data : null); });
 }
 
-/* 城市搜索(中文优先) */
+/* 中文城市纠错表。第三方地名索引偶尔会把同名地点放到错误省份，
+   精确命中时优先使用这里的权威行政区与坐标。 */
+var CITY_SEARCH_OVERRIDES = {
+  "腾冲": { name: "腾冲", admin2: "保山市", admin1: "云南省", country: "中国",
+    country_code: "CN", latitude: 25.0205, longitude: 98.4900 },
+  "腾冲市": { name: "腾冲", admin2: "保山市", admin1: "云南省", country: "中国",
+    country_code: "CN", latitude: 25.0205, longitude: 98.4900 }
+};
+
+function normalizeCityQuery(value) {
+  return String(value || "").trim().replace(/\s+/g, "");
+}
+
+/* 城市搜索(中文优先 + 精确纠错) */
 function searchCities(query, cb) {
+  var normalized = normalizeCityQuery(query);
+  var override = CITY_SEARCH_OVERRIDES[normalized];
   fetch("https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(query) +
     "&count=6&language=zh&format=json")
     .then(function (r) { return r.json(); })
-    .then(function (j) { cb(j.results || []); })
-    .catch(function () { cb([]); });
+    .then(function (j) {
+      var results = j.results || [];
+      if (override) {
+        results = [override].concat(results.filter(function (r) {
+          return !(Math.abs(r.latitude - override.latitude) < 0.02 &&
+            Math.abs(r.longitude - override.longitude) < 0.02);
+        }));
+      }
+      cb(results);
+    })
+    .catch(function () { cb(override ? [override] : []); });
 }
 
 /* ISO 国家码 → 国旗 emoji */

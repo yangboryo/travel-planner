@@ -451,10 +451,12 @@ function fxConvert(from) {
 
 /* ---------- 新建行程抽屉 ---------- */
 
-var NT_SELECTED = null; /* 新建行程时选中的城市 */
+var NT_SELECTED = null; /* 新建/编辑行程时选中的城市 */
+var NT_CITY_CHANGED = false;
 
 function openNewTripSheet() {
   NT_SELECTED = null;
+  NT_CITY_CHANGED = false;
   var overlay = document.createElement("div");
   overlay.className = "sheet-overlay";
   overlay.innerHTML = '<div class="sheet" onclick="event.stopPropagation()">' +
@@ -480,6 +482,7 @@ function openNewTripSheet() {
 function pickTripCity() {
   openCitySearch("选择目的地城市", function (loc) {
     NT_SELECTED = loc;
+    NT_CITY_CHANGED = true;
     var el = document.getElementById("nt-city-display");
     if (el) el.innerHTML = flagEmoji(loc.countryCode) + " " + loc.name + ' <span class="tip-label">' + loc.country + "</span>";
     /* 根据目的地国家自动匹配币种(先中文名,再 ISO 码保底) */
@@ -505,7 +508,8 @@ function submitNewTrip() {
   var trip = {
     id: "trip-" + Date.now(),
     city: city, flag: flag, currency: currency,
-    loc: { lat: NT_SELECTED.lat, lon: NT_SELECTED.lon, country: NT_SELECTED.country },
+    loc: { lat: NT_SELECTED.lat, lon: NT_SELECTED.lon, country: NT_SELECTED.country,
+      countryCode: NT_SELECTED.countryCode || "" },
     startDate: start, endDate: end,
     weather: [], todos: [
       { offsetDays: 30, text: "预订酒店", done: false },
@@ -541,15 +545,17 @@ function delTrip(id) {
 function openEditTripSheet(tripId) {
   var trip = getTrip(tripId);
   if (!trip) return;
-  NT_SELECTED = { name: trip.city, country: trip.loc.country, countryCode: "",
-    lat: trip.loc.lat, lon: trip.loc.lon };
+  var oldLoc = trip.loc || {};
+  NT_SELECTED = { name: trip.city || "", country: oldLoc.country || "", countryCode: oldLoc.countryCode || "",
+    lat: oldLoc.lat, lon: oldLoc.lon };
+  NT_CITY_CHANGED = false;
   var overlay = document.createElement("div");
   overlay.className = "sheet-overlay";
   overlay.innerHTML = '<div class="sheet" onclick="event.stopPropagation()">' +
     '<div class="sheet-title">编辑行程</div>' +
     '<label class="field-label">目的地城市</label>' +
     '<div id="nt-city-display" class="field-input nt-city-pick" onclick="pickTripCity()">' +
-    trip.flag + ' ' + trip.city + ' <span class="tip-label">' + (trip.loc.country || '') + '</span></div>' +
+    (trip.flag || "🌍") + ' ' + trip.city + ' <span class="tip-label">' + (oldLoc.country || '') + '</span></div>' +
     '<label class="field-label">币种（选完目的地自动匹配）</label>' +
     '<select id="nt-currency" class="field-input">' +
     Object.keys(APP_DATA.fxRates).filter(function (c) { return c !== "AUD"; })
@@ -578,11 +584,12 @@ function submitEditTrip(tripId) {
   if (new Date(end) < new Date(start)) { alert("返回日期不能早于出发日期"); return; }
 
   var updates = { startDate: start, endDate: end, currency: currency };
-  /* 如果重新选了目的地城市,也更新 */
-  if (NT_SELECTED && NT_SELECTED.name !== trip.city) {
+  /* 只要用户重新选择过城市就完整更新地点；同名城市纠偏也必须保存。 */
+  if (NT_CITY_CHANGED && NT_SELECTED) {
     updates.city = NT_SELECTED.name;
     updates.flag = flagEmoji(NT_SELECTED.countryCode);
-    updates.loc = { lat: NT_SELECTED.lat, lon: NT_SELECTED.lon, country: NT_SELECTED.country };
+    updates.loc = { lat: NT_SELECTED.lat, lon: NT_SELECTED.lon, country: NT_SELECTED.country,
+      countryCode: NT_SELECTED.countryCode || "" };
   }
   updateTrip(tripId, updates);
   document.querySelector(".sheet-overlay").remove();

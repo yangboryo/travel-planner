@@ -447,13 +447,24 @@ function sectionTips(trip) {
 /* ---------- 板块:当地景点 & 美食推荐 ---------- */
 
 function sectionLocalRecs(trip) {
-  var recs = APP_DATA.localRecommendations[trip.city];
+  var cityName = String(trip.city || "").replace(/市$/, "");
+  var recs = APP_DATA.localRecommendations[trip.city] || APP_DATA.localRecommendations[cityName];
   if (!recs && !trip.city) return "";
 
-  /* 如果目的地不在内置推荐中,给个提示 */
+  /* 未收录城市也提供可加入清单的探索方向，避免整块内容空白。 */
   if (!recs) {
-    return sectionCard("localrecs", "🏙", "当地推荐", "暂无内置数据",
-      '<div class="empty-inline">该目的地暂无内置景点/美食推荐，欢迎在想去清单中手动添加 ✨</div>');
+    recs = {
+      spots: [
+        { name: trip.city + "必去地标", type: "📍", desc: "出发前按评分与开放时间筛选当地代表性地标" },
+        { name: trip.city + "博物馆与历史街区", type: "🏛", desc: "适合了解城市历史，也可作为雨天行程" },
+        { name: trip.city + "自然风景与观景点", type: "🌿", desc: "优先选择交通便利、近期评价稳定的地点" }
+      ],
+      food: [
+        { name: trip.city + "本地特色菜", type: "🍲", desc: "搜索当地代表菜，再按距离与近期评价选店" },
+        { name: trip.city + "传统早餐", type: "🥣", desc: "从菜市场、老街或本地早餐店开始探索" },
+        { name: trip.city + "夜市与小吃", type: "🍢", desc: "留意营业日期、卫生情况与返程交通" }
+      ]
+    };
   }
 
   /* 检查已加入想去清单的项目 */
