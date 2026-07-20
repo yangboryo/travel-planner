@@ -623,6 +623,11 @@ function delTripFromEdit(tripId) {
   closeTripDetail();
 }
 
+function renderExplore() {
+  document.querySelector("#screen-explore .screen-body").innerHTML =
+    '<h1 class="page-title">推荐</h1><div class="empty-state">加载中…</div>';
+}
+
 var PREF_OPTIONS = {
   budgetTier: [["economy","经济"],["comfort","舒适"],["luxury","豪华"]],
   cabinClass: [["economy","经济舱"],["premium","超经"],["business","商务舱"]],

@@ -292,6 +292,7 @@ document.querySelectorAll(".tab-item").forEach(function (btn) {
   btn.addEventListener("click", function () {
     showScreen(btn.dataset.screen);
     if (btn.dataset.screen === "screen-calendar") renderCalendar();
+    if (btn.dataset.screen === "screen-explore") renderExplore();
     if (btn.dataset.screen === "screen-profile") renderProfile();
   });
 });
