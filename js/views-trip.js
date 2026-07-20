@@ -268,8 +268,15 @@ function sectionTransport(trip) {
   if (!tr.userFlights) tr.userFlights = []; /* 兼容旧存档 */
   var todayStr = toDateStr(new Date());
 
+  var recs = APP_DATA.destinationRecs[trip.city] || APP_DATA.destinationRecs[String(trip.city).replace(/市$/, "")];
+  var recHTML = "";
+  if (recs && typeof renderRecTransport === "function") {
+    var pp = getPassport();
+    var originName = (pp.currentLoc && pp.currentLoc.name) || (pp.homeLoc && pp.homeLoc.name) || "";
+    recHTML = renderRecTransport(recs.transport, getPrefs(), { originName: originName, currency: trip.currency, toAUD: toAUD });
+  }
   /* 我的航班:手动录入 */
-  var body = '<div class="field-label" style="margin-top:0;">我的航班</div>';
+  var body = recHTML + '<div class="field-label"' + (recHTML ? '' : ' style="margin-top:0;"') + '>我的航班</div>';
   if (tr.userFlights.length) {
     body += tr.userFlights.map(function (f, i) {
       var isToday = f.date === todayStr;

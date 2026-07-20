@@ -135,6 +135,24 @@ function renderPoiDetail(poi, ctx) {
   return html;
 }
 
+function fmtMoney(n) { return Number(n).toLocaleString(); }
+function renderRecTransport(rec, prefs, ctx) {
+  if (!rec || !rec.intercity || !rec.intercity.length) return "";
+  var route = rec.intercity[0], cabins = orderCabins(route.cabins, normalizePrefs(prefs).cabinClass);
+  var html = '<div class="rec-transport"><div class="rt-origin">📍 从' + (ctx.originName || "出发地") + '出发 · ' +
+    (route.label || "") + (route.durationH ? ' ' + route.durationH + 'h' : '') + '</div>';
+  cabins.forEach(function (c) {
+    var aud = ctx.toAUD ? ctx.toAUD(c.priceLocal, ctx.currency) : null;
+    var cabinName = { economy: "经济舱", premium: "超经", business: "商务舱" }[c["class"]] || c["class"];
+    html += '<div class="rt-cabin' + (c.preferred ? " pref" : "") + '"><div class="rt-cabin-top"><span>' + cabinName + '</span>' +
+      (c.preferred ? '<span class="badge">你的偏好</span>' : '<span class="rt-min">' + (c["class"] === "economy" ? "最省" : "") + '</span>') +
+      '</div><div class="rt-price">' + (ctx.currency || "") + ' ' + fmtMoney(c.priceLocal) +
+      (aud != null ? ' <em>≈ ' + fmtMoney(aud) + ' AUD</em>' : '') + '</div></div>';
+  });
+  if (route.tip) html += '<div class="rt-tip">💡 ' + route.tip + '</div>';
+  return html + '</div>';
+}
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     PREFS_DEFAULT: PREFS_DEFAULT,
