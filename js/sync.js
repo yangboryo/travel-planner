@@ -328,7 +328,9 @@ function pullRemote(remote) {
   STATE.prefs = normalizePrefs(remote.prefs);
   STATE.deletedTripIds = remote.deletedTripIds || [];
   STATE.updatedAt = remote.updatedAt;
-  localStorage.setItem(STORE_KEY, JSON.stringify(STATE));
+  localStorage.setItem(STORE_KEY, JSON.stringify(STATE, function (key, value) {
+    return key === "geoLoc" ? undefined : value;
+  }));
   SYNC_STATE.baseline = remote.updatedAt;
   SYNC_STATE.dirty = false;
   SYNC_STATE.lastSyncAt = new Date().toISOString();
@@ -348,7 +350,9 @@ function mergeRemote(gistId, remote) {
   STATE.prefs = normalizePrefs(merged.prefs);
   STATE.deletedTripIds = merged.deletedTripIds;
   STATE.updatedAt = merged.updatedAt;
-  localStorage.setItem(STORE_KEY, JSON.stringify(STATE));
+  localStorage.setItem(STORE_KEY, JSON.stringify(STATE, function (key, value) {
+    return key === "geoLoc" ? undefined : value;
+  }));
   return pushRemote(gistId, "已自动合并两台设备的数据").then(function () {
     if (typeof renderTripList === "function") renderTripList();
     if (document.querySelector("#screen-calendar.active") && typeof renderCalendar === "function") renderCalendar();

@@ -25,7 +25,9 @@ STATE.prefs = (typeof normalizePrefs === "function")
   : (STATE.prefs || JSON.parse(JSON.stringify(APP_DATA.prefsDefault)));
 if (!STATE.updatedAt) {
   STATE.updatedAt = new Date().toISOString();
-  localStorage.setItem(STORE_KEY, JSON.stringify(STATE));
+  localStorage.setItem(STORE_KEY, JSON.stringify(STATE, function (key, value) {
+    return key === "geoLoc" ? undefined : value;
+  }));
 }
 
 /* 插座兼容判断:两地 type 字母有交集即兼容 */
@@ -60,7 +62,9 @@ function setPassportField(key, value) {
 function saveState(options) {
   var userChange = !options || options.sync !== false;
   if (userChange) STATE.updatedAt = new Date().toISOString();
-  localStorage.setItem(STORE_KEY, JSON.stringify(STATE));
+  localStorage.setItem(STORE_KEY, JSON.stringify(STATE, function (key, value) {
+    return key === "geoLoc" ? undefined : value;
+  }));
   if (userChange && typeof markSyncDirty === "function") markSyncDirty();
 }
 
@@ -332,6 +336,23 @@ function openPoiDetail(tripId, kind, name) {
   showScreen("screen-poi-detail");
 }
 function closePoiDetail() { showScreen(POI_RETURN); }
+
+/* 实时定位仅驻留内存,不写本地存档也不进入云同步。 */
+function getAnchorLoc() {
+  if (STATE.geoLoc && STATE.geoLoc.lat != null) return STATE.geoLoc;
+  var p = getPassport();
+  return p.currentLoc || null;
+}
+
+function requestGeo(cb) {
+  if (!navigator.geolocation) { cb(getAnchorLoc()); return; }
+  navigator.geolocation.getCurrentPosition(function (pos) {
+    var fallback = getPassport().currentLoc;
+    STATE.geoLoc = { lat: pos.coords.latitude, lon: pos.coords.longitude,
+      name: fallback && fallback.name || "当前位置", at: Date.now() };
+    cb(STATE.geoLoc);
+  }, function () { cb(getAnchorLoc()); }, { timeout: 8000, maximumAge: 600000 });
+}
 
 /* ---------- PWA 更新检测(桌面版自动拉新) ---------- */
 
