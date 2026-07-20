@@ -19,6 +19,10 @@ var STATE = loadState();
 if (!STATE.passport) STATE.passport = { nationality: "", expiry: "" };
 if (STATE.passport.home === undefined) STATE.passport.home = "";
 if (!Array.isArray(STATE.deletedTripIds)) STATE.deletedTripIds = [];
+/* 兼容旧存档:补 prefs(用 recommend.js 的归一化,保证字段齐全) */
+STATE.prefs = (typeof normalizePrefs === "function")
+  ? normalizePrefs(STATE.prefs)
+  : (STATE.prefs || JSON.parse(JSON.stringify(APP_DATA.prefsDefault)));
 if (!STATE.updatedAt) {
   STATE.updatedAt = new Date().toISOString();
   localStorage.setItem(STORE_KEY, JSON.stringify(STATE));
@@ -40,6 +44,13 @@ function plugCheck(city) {
 }
 
 function getPassport() { return STATE.passport; }
+
+function getPrefs() { return STATE.prefs; }
+
+function setPrefsField(key, value) {
+  STATE.prefs[key] = value;
+  saveState();
+}
 
 function setPassportField(key, value) {
   STATE.passport[key] = value;

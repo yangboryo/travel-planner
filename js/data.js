@@ -3,6 +3,12 @@
 const APP_DATA = {
   /* 护照信息默认为空,在"我的"页设置,存 localStorage */
   passport: { nationality: "", expiry: "" },
+  /* 出行喜好默认值(个性化推荐用),在"我的"页可改 */
+  prefsDefault: {
+    budgetTier: "comfort", cabinClass: "economy",
+    lodgingTypes: ["hotel"], lodgingLocation: "central",
+    cuisine: [], travelStyle: "balanced"
+  },
 
   /* 相对 AUD 的汇率:1 AUD = rate 单位外币(阶段二接入实时汇率)
      仅保留主要货币 + 亚太常用货币 */
