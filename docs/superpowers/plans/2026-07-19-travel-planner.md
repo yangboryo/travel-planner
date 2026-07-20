@@ -1,5 +1,7 @@
 # 私人出行助理(travel-planner)Implementation Plan
 
+> 历史实施计划：初版任务已经结束，文中的勾选项和 agent 执行说明不再用于当前工作。当前结论以项目根目录 `HANDOFF.md` 为准。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 按设计文档 `docs/superpowers/specs/2026-07-19-travel-planner-design.md` 实现 iPhone 16 竖屏优先的"私人出行助理"原型(mock 数据 + localStorage)。
