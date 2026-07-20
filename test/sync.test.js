@@ -40,4 +40,13 @@ var deleted = sync.mergeCloudData({
 });
 assert.strictEqual(deleted.trips.length, 0, "已删除行程不会被另一端复活");
 
+var mergedPrefs = sync.mergeCloudData(
+  { updatedAt: "2026-07-20T10:00:00Z", passport: {}, deletedTripIds: [], trips: [],
+    prefs: { cabinClass: "economy", cuisine: ["local"] } },
+  { updatedAt: "2026-07-20T11:00:00Z", passport: {}, deletedTripIds: [], trips: [],
+    prefs: { cabinClass: "business" } }
+);
+assert.strictEqual(mergedPrefs.prefs.cabinClass, "business", "较新侧舱位胜出");
+assert.deepStrictEqual(mergedPrefs.prefs.cuisine, ["local"], "另一侧独有字段保留");
+
 console.log("sync reconcile tests passed");

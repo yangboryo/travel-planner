@@ -50,7 +50,7 @@ function setSyncStatus(status, message) {
 }
 
 function cloudPayload() {
-  return { trips: STATE.trips, passport: STATE.passport,
+  return { trips: STATE.trips, passport: STATE.passport, prefs: STATE.prefs,
     deletedTripIds: STATE.deletedTripIds || [], updatedAt: STATE.updatedAt };
 }
 
@@ -133,6 +133,7 @@ function mergeCloudData(local, remote) {
   return {
     trips: trips,
     passport: mergeSyncValue(local.passport || {}, remote.passport || {}, preferRemote),
+    prefs: mergeSyncValue(local.prefs || {}, remote.prefs || {}, preferRemote),
     deletedTripIds: deleted,
     updatedAt: new Date().toISOString()
   };
@@ -324,6 +325,7 @@ function pushRemote(gistId, successMessage) {
 function pullRemote(remote) {
   STATE.trips = remote.trips;
   STATE.passport = remote.passport;
+  STATE.prefs = normalizePrefs(remote.prefs);
   STATE.deletedTripIds = remote.deletedTripIds || [];
   STATE.updatedAt = remote.updatedAt;
   localStorage.setItem(STORE_KEY, JSON.stringify(STATE));
@@ -343,6 +345,7 @@ function mergeRemote(gistId, remote) {
   var merged = mergeCloudData(cloudPayload(), remote);
   STATE.trips = merged.trips;
   STATE.passport = merged.passport;
+  STATE.prefs = normalizePrefs(merged.prefs);
   STATE.deletedTripIds = merged.deletedTripIds;
   STATE.updatedAt = merged.updatedAt;
   localStorage.setItem(STORE_KEY, JSON.stringify(STATE));
