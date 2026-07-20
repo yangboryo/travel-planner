@@ -623,9 +623,55 @@ function delTripFromEdit(tripId) {
   closeTripDetail();
 }
 
+var EXPLORE_STATE = { place: "nearby", sort: "distance" };
 function renderExplore() {
-  document.querySelector("#screen-explore .screen-body").innerHTML =
-    '<h1 class="page-title">推荐</h1><div class="empty-state">加载中…</div>';
+  var body = document.querySelector("#screen-explore .screen-body");
+  var upcoming = getTrips().filter(function (t) { return daysUntil(t.endDate) >= 0; })
+    .sort(function (a, b) { return new Date(a.startDate) - new Date(b.startDate); });
+  var html = '<h1 class="page-title">推荐</h1><div class="place-switch">' +
+    '<span class="place-chip' + (EXPLORE_STATE.place === "nearby" ? " on" : "") + '" onclick="switchPlace(\'nearby\')">📍 附近</span>';
+  upcoming.forEach(function (t) {
+    html += '<span class="place-chip' + (EXPLORE_STATE.place === t.id ? " on" : "") + '" onclick="switchPlace(\'' + t.id + '\')">' +
+      t.city + ' · ' + (new Date(t.startDate).getMonth() + 1) + '月</span>';
+  });
+  body.innerHTML = html + '</div><div id="explore-content"></div>';
+  renderExploreContent();
+}
+
+function switchPlace(place) { EXPLORE_STATE.place = place; EXPLORE_STATE.sort = "distance"; renderExplore(); }
+function setExploreSort(sort) { EXPLORE_STATE.sort = sort; renderExploreContent(); }
+function renderExploreContent() {
+  var box = document.getElementById("explore-content");
+  if (!box) return;
+  if (EXPLORE_STATE.place === "nearby") renderNearby(box); else renderDestinationPlan(box, EXPLORE_STATE.place);
+}
+function sortToggleHTML(distLabel) {
+  return '<div class="sort-toggle"><span class="' + (EXPLORE_STATE.sort === "distance" ? "on" : "") + '" onclick="setExploreSort(\'distance\')">' +
+    distLabel + '</span><span class="' + (EXPLORE_STATE.sort === "rating" ? "on" : "") + '" onclick="setExploreSort(\'rating\')">好吃好玩</span></div>';
+}
+function poiGroupHTML(list, kind, anchor, tripId, wishNames, anchorLabel) {
+  return rankPois(list, { sort: EXPLORE_STATE.sort, anchor: anchor, prefs: getPrefs(), kind: kind }).map(function (poi) {
+    return renderPoiCard(poi, { tripId: tripId, kind: kind, wishNames: wishNames, anchorLabel: anchorLabel });
+  }).join("");
+}
+function nearbyPois(loc) {
+  var best = null, bestD = Infinity, bestCity = "";
+  Object.keys(APP_DATA.destinationRecs).forEach(function (city) {
+    var r = APP_DATA.destinationRecs[city], d = haversineM(loc.lat, loc.lon, r.center.lat, r.center.lon);
+    if (d < bestD) { bestD = d; best = r; bestCity = city; }
+  });
+  return best ? { dining: best.dining || [], attractions: best.attractions || [], city: bestCity } : { dining: [], attractions: [], city: "" };
+}
+function renderNearby(box) {
+  box.innerHTML = '<div class="empty-inline">定位中…</div>';
+  requestGeo(function (loc) {
+    if (!loc) { box.innerHTML = '<div class="empty-state">未获取到定位。请到「我的」设置现在所在地。</div>'; return; }
+    var near = nearbyPois(loc);
+    var html = '<div class="explore-head"><span>附近 · ' + (loc.name || near.city) + '</span>' + sortToggleHTML("离我最近") + '</div>' +
+      '<div class="poi-group-label">🍽 好吃</div>' + (poiGroupHTML(near.dining, "dining", loc, near.city, [], "") || '<div class="empty-inline">附近暂无收录</div>') +
+      '<div class="poi-group-label">🎡 好玩</div>' + (poiGroupHTML(near.attractions, "attractions", loc, near.city, [], "") || '<div class="empty-inline">附近暂无收录</div>');
+    box.innerHTML = html;
+  });
 }
 
 var PREF_OPTIONS = {
