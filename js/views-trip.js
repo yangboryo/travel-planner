@@ -544,7 +544,9 @@ function addRecToWish(tripId, name, type) {
     trip.wishlist.push({ name: name, type: type, scheduled: false });
   }
   saveState();
-  refreshTripDetail();
+  var active = document.querySelector(".screen.active");
+  if (active && active.id === "screen-explore" && typeof renderExploreContent === "function") renderExploreContent();
+  else refreshTripDetail();
 }
 
 function poiSectionBody(trip, kind) {

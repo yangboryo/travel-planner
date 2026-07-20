@@ -670,6 +670,17 @@ function renderNearby(box) {
     var html = '<div class="explore-head"><span>附近 · ' + (loc.name || near.city) + '</span>' + sortToggleHTML("离我最近") + '</div>' +
       '<div class="poi-group-label">🍽 好吃</div>' + (poiGroupHTML(near.dining, "dining", loc, near.city, [], "") || '<div class="empty-inline">附近暂无收录</div>') +
       '<div class="poi-group-label">🎡 好玩</div>' + (poiGroupHTML(near.attractions, "attractions", loc, near.city, [], "") || '<div class="empty-inline">附近暂无收录</div>');
+    var tripCities = getTrips().map(function (t) { return t.city; });
+    var discover = Object.keys(APP_DATA.destinationRecs).filter(function (city) { return tripCities.indexOf(city) === -1; });
+    if (discover.length) {
+      html += '<div class="poi-group-label">🌏 发现更多目的地</div>';
+      discover.forEach(function (city) {
+        var r = APP_DATA.destinationRecs[city];
+        html += '<div class="card trip-card" onclick="previewDestination(\'' + city + '\')"><div class="trip-card-top">' +
+          '<span class="trip-city">' + city + '</span><span>›</span></div><div class="trip-dates">' +
+          ((r.dining || []).length + (r.attractions || []).length) + ' 个精选推荐</div></div>';
+      });
+    }
     box.innerHTML = html;
   });
 }
@@ -688,6 +699,10 @@ function renderDestinationPlan(box, tripId) {
     '<div class="poi-group-label">🎡 好玩</div>' + poiGroupHTML(recs.attractions || [], "attractions", anchor, trip.id, wishNames, hasHotel ? "距酒店 " : "") +
     '<button class="btn-secondary" style="width:100%;margin-top:14px;" onclick="openTripDetail(\'' + trip.id + '\')">→ 打开' + trip.city + '行程</button>';
   box.innerHTML = html;
+}
+
+function previewDestination(city) {
+  if (confirm("为「" + city + "」新建一个行程来规划吗?")) openNewTripSheet();
 }
 
 var PREF_OPTIONS = {
