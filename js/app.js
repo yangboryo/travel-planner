@@ -1,6 +1,6 @@
 /* 应用层:store(localStorage)、导航切换、入口 */
 
-var APP_VERSION = "v9"; /* 与 sw.js 的 VERSION 保持一致 */
+var APP_VERSION = "v10"; /* 与 sw.js 的 VERSION 保持一致 */
 
 /* ---------- store ---------- */
 
@@ -18,6 +18,10 @@ var STATE = loadState();
 /* 兼容旧版本存档:补上缺失的字段 */
 if (!STATE.passport) STATE.passport = { nationality: "", expiry: "" };
 if (STATE.passport.home === undefined) STATE.passport.home = "";
+if (!STATE.updatedAt) {
+  STATE.updatedAt = new Date().toISOString();
+  localStorage.setItem(STORE_KEY, JSON.stringify(STATE));
+}
 
 /* 插座兼容判断:两地 type 字母有交集即兼容 */
 function plugCheck(city) {
@@ -41,8 +45,11 @@ function setPassportField(key, value) {
   saveState();
 }
 
-function saveState() {
+function saveState(options) {
+  var userChange = !options || options.sync !== false;
+  if (userChange) STATE.updatedAt = new Date().toISOString();
   localStorage.setItem(STORE_KEY, JSON.stringify(STATE));
+  if (userChange && typeof markSyncDirty === "function") markSyncDirty();
 }
 
 function getTrips() { return STATE.trips; }
@@ -163,7 +170,7 @@ function fetchCurrentWeather(loc, cb) {
     .then(function (j) {
       var data = { temp: Math.round(j.current.temperature_2m), code: j.current.weather_code };
       STATE.weatherCache[key] = { at: Date.now(), data: data };
-      saveState();
+      saveState({ sync: false });
       cb(data);
     })
     .catch(function () { cb(cached ? cached.data : null); });
@@ -193,7 +200,7 @@ function fetchForecast(loc, startDate, endDate, cb) {
           low: Math.round(j.daily.temperature_2m_min[i]) };
       });
       STATE.weatherCache[key] = { at: Date.now(), data: days };
-      saveState();
+      saveState({ sync: false });
       cb(days);
     })
     .catch(function () { cb(cached ? cached.data : null); });
@@ -298,3 +305,7 @@ if ("serviceWorker" in navigator) {
 
 renderTripList();
 showScreen("screen-trips");
+if (typeof syncNow === "function" && SYNC_STATE.token) syncNow();
+window.addEventListener("online", function () {
+  if (typeof syncNow === "function" && SYNC_STATE.token) syncNow();
+});

@@ -1,6 +1,6 @@
 /* Service Worker:全量预缓存,离线优先。改版时把 VERSION +1 强制刷新缓存。 */
 
-var VERSION = "v9";
+var VERSION = "v10";
 var CACHE = "travel-planner-" + VERSION;
 var ASSETS = [
   "./",
@@ -9,6 +9,7 @@ var ASSETS = [
   "./css/base.css",
   "./css/screens.css",
   "./js/data.js",
+  "./js/sync.js",
   "./js/views-main.js",
   "./js/views-trip.js",
   "./js/app.js",

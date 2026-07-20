@@ -316,7 +316,7 @@ function renderProfile() {
       : '<div class="profile-ok">✅ 有效期充足(剩余约 ' + Math.floor(monthsLeft / 12) + ' 年)</div>';
   }
 
-  html += '<div class="section-label">护照档案(仅存本机)</div>' +
+  html += '<div class="section-label">护照档案(开启后同步至私密 Gist)</div>' +
     '<div class="card">' +
     '<div class="profile-row lodging-row" onclick="editPassport(\'nationality\',\'国籍\')">' +
     '<span class="profile-key">国籍</span><span>' + (p.nationality || '<span style="color:var(--text-faint)">点击设置</span>') + '</span></div>' +
@@ -345,6 +345,9 @@ function renderProfile() {
     '<div class="fx-note">参考汇率,以银行实际成交为准</div>' +
     '</div>';
 
+  html += '<div class="section-label">跨设备云同步</div>' +
+    '<div id="sync-section" class="card"></div>';
+
   html += '<div class="section-label">数据备份(重要)</div>' +
     '<div class="card">' +
     '<div class="fx-note" style="text-align:left;margin:0 0 10px;">iPhone 长期不打开可能会清空 App 数据。建议定期导出备份,换机或数据丢失后可恢复。</div>' +
@@ -361,9 +364,45 @@ function renderProfile() {
     '<span style="color:var(--primary)">立即检查 ›</span></div></div>';
 
   body.innerHTML = html;
+  renderSyncSection();
   fxConvert("a");
   var vEl = document.getElementById("app-version");
   if (vEl) vEl.textContent = (typeof APP_VERSION !== "undefined" ? APP_VERSION : "—");
+}
+
+function renderSyncSection() {
+  var el = document.getElementById("sync-section");
+  if (!el || typeof SYNC_STATE === "undefined") return;
+  var labels = {
+    local: "⚪ 仅本机", dirty: "🟠 待同步", syncing: "🔵 正在同步",
+    synced: "🟢 已同步", offline: "🟡 离线", conflict: "🔴 有冲突", error: "🔴 同步失败"
+  };
+  var html = '<div class="profile-row"><span class="profile-key">状态</span>' +
+    '<span id="sync-status">' + (labels[SYNC_STATE.status] || labels.local) + '</span></div>' +
+    '<div class="fx-note" style="text-align:left;margin:8px 0 12px;word-break:break-word;">' +
+    escapeHTML(SYNC_STATE.message || "") +
+    (SYNC_STATE.lastSyncAt ? '<br>上次成功: ' + formatSyncTime(SYNC_STATE.lastSyncAt) : "") + '</div>';
+  if (!SYNC_STATE.token || !SYNC_STATE.encryptionKey) {
+    html += '<input id="sync-token" class="field-input" type="password" autocomplete="off" ' +
+      'placeholder="粘贴 GitHub classic token (仅 gist 权限)">' +
+      '<input id="sync-password" class="field-input" type="password" autocomplete="new-password" ' +
+      'style="margin-top:8px;" placeholder="设置同步密码 (至少 10 个字符)">' +
+      '<input id="sync-password-confirm" class="field-input" type="password" autocomplete="new-password" ' +
+      'style="margin-top:8px;" placeholder="再次输入同步密码">' +
+      '<button class="btn-primary" style="width:100%;margin-top:10px;" onclick="saveSyncCredentials()">建立加密同步</button>' +
+      '<div class="fx-note" style="text-align:left;margin-top:10px;">数据在本机加密后才上传。token 和派生密钥只保存在本机；其他设备需输入相同同步密码。忘记密码将无法解密云端数据。</div>';
+  } else {
+    html += '<div class="date-row">' +
+      '<button class="btn-primary" style="flex:1;" onclick="syncNow()">立即同步</button>' +
+      '<button class="btn-secondary" style="flex:1;" onclick="clearSyncToken()">清除 token</button></div>';
+  }
+  el.innerHTML = html;
+}
+
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, function (char) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char];
+  });
 }
 
 function editPassport(key, label) {
