@@ -360,13 +360,13 @@ const APP_DATA = {
           tags: ["精品", "近交通"], desc: "适合重视出行效率的旅客" }
       ],
       dining: old.food.map(function (x, i) { return {
-        name: x.name, cuisineTags: ["local"], priceLevel: i % 3 + 1, rating: 4.7 - i * 0.1,
+        name: x.name, cuisineTags: ["local"], priceLevel: i % 3 + 1, rating: Number((4.7 - i * 0.1).toFixed(1)),
         michelin: x.desc.indexOf("米其林") !== -1, area: "", lat: meta.center[0] + i * 0.002,
         lon: meta.center[1] + i * 0.002, image: "", address: "", phone: "", website: "", hours: "", desc: x.desc
       }; }),
       attractions: old.spots.map(function (x, i) { return {
         name: x.name, category: x.type, durationH: x.type.indexOf("🎢") !== -1 ? 5 : 1.5,
-        rating: 4.8 - i * 0.1, lat: meta.center[0] + i * 0.002, lon: meta.center[1] - i * 0.002,
+        rating: Number((4.8 - i * 0.1).toFixed(1)), lat: meta.center[0] + i * 0.002, lon: meta.center[1] - i * 0.002,
         image: "", address: "", phone: "", website: "", hours: "", desc: x.desc, tips: "",
         bestFor: ["packed", "balanced", "relaxed"]
       }; })
