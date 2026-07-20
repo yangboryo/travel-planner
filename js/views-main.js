@@ -331,6 +331,26 @@ function renderProfile() {
     expiryHTML +
     '</div>';
 
+  var pf = getPrefs();
+  var prefLabels = {
+    budgetTier: { title: "预算档次", map: { economy: "经济", comfort: "舒适", luxury: "豪华" } },
+    cabinClass: { title: "舱位偏好", map: { economy: "经济舱", premium: "超经", business: "商务舱" } },
+    lodgingLocation: { title: "住宿位置", map: { central: "市中心", "near-transit": "近地铁", quiet: "安静" } },
+    travelStyle: { title: "出行风格", map: { packed: "暴走打卡", balanced: "均衡", relaxed: "悠闲深度" } }
+  };
+  var lodgeTypeMap = { hotel: "连锁酒店", boutique: "精品民宿", hostel: "青旅", resort: "度假村", apartment: "公寓" };
+  var cuisineMap = { local: "本地菜", halal: "清真", vegetarian: "素食", spicy: "嗜辣", trending: "网红店" };
+  html += '<div class="section-label">出行喜好(个性化推荐依据)</div><div class="card">';
+  ["budgetTier", "cabinClass", "lodgingLocation", "travelStyle"].forEach(function (k) {
+    var conf = prefLabels[k];
+    html += '<div class="profile-row lodging-row" onclick="editPrefSingle(\'' + k + '\')">' +
+      '<span class="profile-key">' + conf.title + '</span><span>' + (conf.map[pf[k]] || pf[k]) + '</span></div>';
+  });
+  html += '<div class="profile-row lodging-row" onclick="editPrefMulti(\'lodgingTypes\')"><span class="profile-key">住宿类型</span><span>' +
+    (pf.lodgingTypes.map(function (t) { return lodgeTypeMap[t] || t; }).join("、") || "不限") + '</span></div>';
+  html += '<div class="profile-row lodging-row" onclick="editPrefMulti(\'cuisine\')"><span class="profile-key">口味</span><span>' +
+    (pf.cuisine.length ? pf.cuisine.map(function (t) { return cuisineMap[t] || t; }).join("、") : "不限") + '</span></div></div>';
+
   html += '<div class="section-label">汇率换算器</div>' +
     '<div class="card">' +
     '<div class="fx-row">' +
@@ -601,4 +621,33 @@ function delTripFromEdit(tripId) {
   document.querySelector(".sheet-overlay").remove();
   delTrip(tripId);
   closeTripDetail();
+}
+
+var PREF_OPTIONS = {
+  budgetTier: [["economy","经济"],["comfort","舒适"],["luxury","豪华"]],
+  cabinClass: [["economy","经济舱"],["premium","超经"],["business","商务舱"]],
+  lodgingLocation: [["central","市中心"],["near-transit","近地铁"],["quiet","安静"]],
+  travelStyle: [["packed","暴走打卡"],["balanced","均衡"],["relaxed","悠闲深度"]],
+  lodgingTypes: [["hotel","连锁酒店"],["boutique","精品民宿"],["hostel","青旅"],["resort","度假村"],["apartment","公寓"]],
+  cuisine: [["local","本地菜"],["halal","清真"],["vegetarian","素食"],["spicy","嗜辣"],["trending","网红店"]]
+};
+
+function editPrefSingle(key) {
+  var opts = PREF_OPTIONS[key], cur = getPrefs()[key];
+  var lines = opts.map(function (o, i) { return (i + 1) + ". " + o[1] + (o[0] === cur ? " ✓" : ""); }).join("\n");
+  var ans = prompt("选择(输入序号):\n" + lines);
+  if (ans === null) return;
+  var idx = parseInt(ans, 10) - 1;
+  if (idx >= 0 && idx < opts.length) { setPrefsField(key, opts[idx][0]); renderProfile(); }
+}
+
+function editPrefMulti(key) {
+  var opts = PREF_OPTIONS[key], cur = getPrefs()[key] || [];
+  var lines = opts.map(function (o, i) { return (i + 1) + ". " + o[1] + (cur.indexOf(o[0]) !== -1 ? " ✓" : ""); }).join("\n");
+  var ans = prompt("多选(逗号分隔序号,如 1,3;留空=不限):\n" + lines);
+  if (ans === null) return;
+  var picked = ans.split(",").map(function (s) { return parseInt(s.trim(), 10) - 1; })
+    .filter(function (i) { return i >= 0 && i < opts.length; }).map(function (i) { return opts[i][0]; });
+  setPrefsField(key, picked);
+  renderProfile();
 }
