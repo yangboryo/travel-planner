@@ -10,9 +10,9 @@ var SYNC_BUSY = false;
 var PENDING_SYNC_PASSWORD = "";
 
 function reconcile(localUpdatedAt, remoteUpdatedAt, baseline, dirty) {
-  if (!baseline) return remoteUpdatedAt ? "PULL" : "PUSH";
+  if (!baseline) return remoteUpdatedAt ? "MERGE" : "PUSH";
   var remoteChanged = !!remoteUpdatedAt && remoteUpdatedAt > baseline;
-  if (remoteChanged && dirty) return "CONFLICT";
+  if (remoteChanged && dirty) return "MERGE";
   if (remoteChanged) return "PULL";
   if (dirty) return "PUSH";
   return "NOOP";
@@ -50,7 +50,92 @@ function setSyncStatus(status, message) {
 }
 
 function cloudPayload() {
-  return { trips: STATE.trips, passport: STATE.passport, updatedAt: STATE.updatedAt };
+  return { trips: STATE.trips, passport: STATE.passport,
+    deletedTripIds: STATE.deletedTripIds || [], updatedAt: STATE.updatedAt };
+}
+
+function cloneSyncValue(value) {
+  return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+}
+
+function isPlainObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value);
+}
+
+function syncItemKey(item) {
+  if (!isPlainObject(item)) return typeof item + ":" + JSON.stringify(item);
+  if (item.id != null) return "id:" + item.id;
+  if (item.day != null) return "day:" + item.day;
+  if (item.offsetDays != null && item.text != null) return "todo:" + item.offsetDays + ":" + item.text;
+  if (item.flightNo != null) return "flight:" + item.flightNo + ":" + (item.date || "");
+  if (item.time != null && item.activity != null) return "event:" + item.time + ":" + item.activity;
+  if (item.category != null) return "category:" + item.category;
+  if (item.name != null) return "name:" + item.name;
+  if (item.text != null) return "text:" + item.text;
+  if (item.platform != null) return "platform:" + item.platform + ":" + (item.url || "");
+  if (item.date != null) return "date:" + item.date;
+  return "json:" + JSON.stringify(item);
+}
+
+function mergeSyncArrays(local, remote, preferRemote) {
+  var result = cloneSyncValue(local || []);
+  (remote || []).forEach(function (remoteItem) {
+    var key = syncItemKey(remoteItem);
+    var index = result.findIndex(function (localItem) { return syncItemKey(localItem) === key; });
+    if (index === -1) result.push(cloneSyncValue(remoteItem));
+    else result[index] = mergeSyncValue(result[index], remoteItem, preferRemote);
+  });
+  return result;
+}
+
+function mergeSyncValue(local, remote, preferRemote) {
+  if (local === undefined || local === null || local === "") return cloneSyncValue(remote);
+  if (remote === undefined || remote === null || remote === "") return cloneSyncValue(local);
+  if (Array.isArray(local) && Array.isArray(remote)) return mergeSyncArrays(local, remote, preferRemote);
+  if (isPlainObject(local) && isPlainObject(remote)) {
+    var merged = cloneSyncValue(local);
+    Object.keys(remote).forEach(function (key) {
+      merged[key] = mergeSyncValue(merged[key], remote[key], preferRemote);
+    });
+    return merged;
+  }
+  if (JSON.stringify(local) === JSON.stringify(remote)) return cloneSyncValue(local);
+  if (typeof local === "boolean" && typeof remote === "boolean") return local || remote;
+  return cloneSyncValue(preferRemote ? remote : local);
+}
+
+function sameTrip(local, remote) {
+  if (local.id && remote.id && local.id === remote.id) return true;
+  return !!local.city && local.city === remote.city &&
+    local.startDate === remote.startDate && local.endDate === remote.endDate;
+}
+
+function mergeTrips(localTrips, remoteTrips, preferRemote) {
+  var result = cloneSyncValue(localTrips || []);
+  (remoteTrips || []).forEach(function (remoteTrip) {
+    var index = result.findIndex(function (localTrip) { return sameTrip(localTrip, remoteTrip); });
+    if (index === -1) {
+      result.push(cloneSyncValue(remoteTrip));
+      return;
+    }
+    var stableId = result[index].id || remoteTrip.id;
+    result[index] = mergeSyncValue(result[index], remoteTrip, preferRemote);
+    result[index].id = stableId;
+  });
+  return result;
+}
+
+function mergeCloudData(local, remote) {
+  var deleted = Array.from(new Set((local.deletedTripIds || []).concat(remote.deletedTripIds || [])));
+  var preferRemote = (remote.updatedAt || "") > (local.updatedAt || "");
+  var trips = mergeTrips(local.trips || [], remote.trips || [], preferRemote)
+    .filter(function (trip) { return deleted.indexOf(trip.id) === -1; });
+  return {
+    trips: trips,
+    passport: mergeSyncValue(local.passport || {}, remote.passport || {}, preferRemote),
+    deletedTripIds: deleted,
+    updatedAt: new Date().toISOString()
+  };
 }
 
 function bytesToBase64(bytes) {
@@ -221,7 +306,7 @@ function readRemote(gistId) {
   });
 }
 
-function pushRemote(gistId) {
+function pushRemote(gistId, successMessage) {
   return encryptPayload(cloudPayload()).then(function (encrypted) {
     var files = {};
     files[SYNC_FILE_NAME] = { content: JSON.stringify(encrypted, null, 2) };
@@ -232,13 +317,14 @@ function pushRemote(gistId) {
     SYNC_STATE.baseline = STATE.updatedAt;
     SYNC_STATE.dirty = false;
     SYNC_STATE.lastSyncAt = new Date().toISOString();
-    setSyncStatus("synced", "已加密同步");
+    setSyncStatus("synced", successMessage || "已加密同步");
   });
 }
 
 function pullRemote(remote) {
   STATE.trips = remote.trips;
   STATE.passport = remote.passport;
+  STATE.deletedTripIds = remote.deletedTripIds || [];
   STATE.updatedAt = remote.updatedAt;
   localStorage.setItem(STORE_KEY, JSON.stringify(STATE));
   SYNC_STATE.baseline = remote.updatedAt;
@@ -250,19 +336,21 @@ function pullRemote(remote) {
   if (document.querySelector("#screen-profile.active") && typeof renderProfile === "function") renderProfile();
 }
 
-function resolveConflict(gistId, remote) {
+function mergeRemote(gistId, remote) {
   localStorage.setItem("travel-planner-conflict-backup", JSON.stringify({
     local: cloudPayload(), remote: remote, savedAt: new Date().toISOString()
   }));
-  setSyncStatus("conflict", "本机和云端都有修改,等待选择");
-  var choice = prompt(
-    "发现同步冲突\n\n本机修改: " + formatSyncTime(STATE.updatedAt) +
-    "\n云端修改: " + formatSyncTime(remote.updatedAt) +
-    "\n\n已在本机自动保存冲突快照。\n输入 1 = 保留本机并覆盖云端" +
-    "\n输入 2 = 使用云端并覆盖本机\n关闭窗口 = 暂不处理", "");
-  if (choice === "1") return pushRemote(gistId);
-  if (choice === "2") return Promise.resolve(pullRemote(remote));
-  return Promise.resolve();
+  var merged = mergeCloudData(cloudPayload(), remote);
+  STATE.trips = merged.trips;
+  STATE.passport = merged.passport;
+  STATE.deletedTripIds = merged.deletedTripIds;
+  STATE.updatedAt = merged.updatedAt;
+  localStorage.setItem(STORE_KEY, JSON.stringify(STATE));
+  return pushRemote(gistId, "已自动合并两台设备的数据").then(function () {
+    if (typeof renderTripList === "function") renderTripList();
+    if (document.querySelector("#screen-calendar.active") && typeof renderCalendar === "function") renderCalendar();
+    if (document.querySelector("#screen-profile.active") && typeof renderProfile === "function") renderProfile();
+  });
 }
 
 function syncNow() {
@@ -283,7 +371,7 @@ function syncNow() {
         SYNC_STATE.baseline, SYNC_STATE.dirty);
       if (action === "PUSH") return pushRemote(gistId);
       if (action === "PULL") return pullRemote(remote);
-      if (action === "CONFLICT") return resolveConflict(gistId, remote);
+      if (action === "MERGE") return mergeRemote(gistId, remote);
       SYNC_STATE.lastSyncAt = new Date().toISOString();
       setSyncStatus("synced", "已加密同步");
     });
@@ -351,5 +439,6 @@ if (typeof module !== "undefined" && module.exports) module.exports = {
   reconcile: reconcile,
   deriveEncryptionKey: deriveEncryptionKey,
   bytesToBase64: bytesToBase64,
-  base64ToBytes: base64ToBytes
+  base64ToBytes: base64ToBytes,
+  mergeCloudData: mergeCloudData
 };

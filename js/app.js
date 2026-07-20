@@ -1,6 +1,6 @@
 /* 应用层:store(localStorage)、导航切换、入口 */
 
-var APP_VERSION = "v10"; /* 与 sw.js 的 VERSION 保持一致 */
+var APP_VERSION = "v11"; /* 与 sw.js 的 VERSION 保持一致 */
 
 /* ---------- store ---------- */
 
@@ -18,6 +18,7 @@ var STATE = loadState();
 /* 兼容旧版本存档:补上缺失的字段 */
 if (!STATE.passport) STATE.passport = { nationality: "", expiry: "" };
 if (STATE.passport.home === undefined) STATE.passport.home = "";
+if (!Array.isArray(STATE.deletedTripIds)) STATE.deletedTripIds = [];
 if (!STATE.updatedAt) {
   STATE.updatedAt = new Date().toISOString();
   localStorage.setItem(STORE_KEY, JSON.stringify(STATE));
@@ -59,12 +60,14 @@ function getTrip(id) {
 }
 
 function addTrip(trip) {
+  STATE.deletedTripIds = STATE.deletedTripIds.filter(function (id) { return id !== trip.id; });
   STATE.trips.push(trip);
   saveState();
 }
 
 function deleteTrip(id) {
   STATE.trips = STATE.trips.filter(function (t) { return t.id !== id; });
+  if (STATE.deletedTripIds.indexOf(id) === -1) STATE.deletedTripIds.push(id);
   saveState();
 }
 
@@ -79,7 +82,8 @@ function updateTrip(id, updates) {
 
 /* 导出:剔除天气缓存(可重新获取),只备份真正的用户数据 */
 function buildBackup() {
-  var backup = { trips: STATE.trips, passport: STATE.passport, _v: 1, _at: new Date().toISOString() };
+  var backup = { trips: STATE.trips, passport: STATE.passport,
+    deletedTripIds: STATE.deletedTripIds || [], _v: 2, _at: new Date().toISOString() };
   return JSON.stringify(backup);
 }
 
@@ -117,14 +121,25 @@ function restoreFromText() {
 function restoreFromFile() {
   var input = document.createElement("input");
   input.type = "file";
-  input.accept = ".json,application/json";
+  input.accept = ".json,application/json,text/plain";
+  input.style.position = "fixed";
+  input.style.left = "-9999px";
+  document.body.appendChild(input);
+  function cleanup() { if (input.parentNode) input.parentNode.removeChild(input); }
   input.addEventListener("change", function () {
-    var file = input.files[0];
-    if (!file) return;
+    var file = input.files && input.files[0];
+    if (!file) { cleanup(); return; }
     var reader = new FileReader();
-    reader.onload = function () { applyBackup(reader.result); };
+    reader.onload = function () {
+      var text = typeof reader.result === "string" ? reader.result : "";
+      cleanup();
+      if (!text) { alert("文件内容为空或无法读取。"); return; }
+      applyBackup(text);
+    };
+    reader.onerror = function () { cleanup(); alert("文件读取失败,请重新选择或使用粘贴恢复。"); };
     reader.readAsText(file);
   });
+  input.addEventListener("cancel", cleanup);
   input.click();
 }
 
@@ -135,6 +150,7 @@ function applyBackup(text) {
   if (!confirm("将用备份覆盖当前数据(" + data.trips.length + " 个行程),确定吗?")) return;
   STATE.trips = data.trips;
   if (data.passport) STATE.passport = data.passport;
+  STATE.deletedTripIds = Array.isArray(data.deletedTripIds) ? data.deletedTripIds : [];
   saveState();
   alert("恢复成功 ✓");
   location.reload();
