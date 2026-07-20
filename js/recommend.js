@@ -38,11 +38,29 @@ function orderCabins(cabins, cabinClass) {
   return out;
 }
 
+var TIER_RANK = { economy: 0, comfort: 1, luxury: 2 };
+function rankLodging(lodgingArr, prefs) {
+  var p = normalizePrefs(prefs);
+  var scored = (lodgingArr || []).map(function (l) {
+    var typeHit = p.lodgingTypes.indexOf(l.type) !== -1;
+    var locHit = l.location === p.lodgingLocation;
+    var tierGap = Math.abs((TIER_RANK[l.tier] == null ? 1 : TIER_RANK[l.tier]) - (TIER_RANK[p.budgetTier] == null ? 1 : TIER_RANK[p.budgetTier]));
+    return { item: l, score: (typeHit ? 100 : 0) + (locHit ? 20 : 0) - tierGap * 10,
+      matched: typeHit, why: (typeHit ? "贴合你偏好的住宿类型" : "") + (locHit ? (typeHit ? " · " : "") + "位置合你意" : "") };
+  });
+  scored.sort(function (a, b) { return b.score - a.score; });
+  return scored.map(function (s) {
+    var o = {}; for (var k in s.item) o[k] = s.item[k];
+    o.matched = s.matched; o.why = s.why; return o;
+  });
+}
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     PREFS_DEFAULT: PREFS_DEFAULT,
     normalizePrefs: normalizePrefs,
     haversineM: haversineM,
-    orderCabins: orderCabins
+    orderCabins: orderCabins,
+    rankLodging: rankLodging
   };
 }

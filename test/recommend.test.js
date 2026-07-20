@@ -27,4 +27,14 @@ assert.strictEqual(ordered[0].preferred, true);
 assert.strictEqual(ordered[1].preferred, false);
 assert.strictEqual(rec.orderCabins(cabins, "premium")[0].preferred, false);
 
+var lodging = [
+  { name: "连锁A", type: "hotel", tier: "economy", location: "central" },
+  { name: "精品B", type: "boutique", tier: "comfort", location: "near-transit" }
+];
+var ranked = rec.rankLodging(lodging, rec.normalizePrefs({ lodgingTypes: ["boutique"], budgetTier: "comfort", lodgingLocation: "near-transit" }));
+assert.strictEqual(ranked[0].name, "精品B");
+assert.strictEqual(ranked[0].matched, true);
+assert.ok(ranked[0].why.length > 0);
+assert.strictEqual(ranked[1].matched, false);
+
 console.log("Task1 OK");
