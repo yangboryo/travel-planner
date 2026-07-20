@@ -283,7 +283,7 @@ function showScreen(id) {
   document.querySelectorAll(".tab-item").forEach(function (t) {
     t.classList.toggle("active", t.dataset.screen === id);
   });
-  var isDetail = id === "screen-trip-detail";
+  var isDetail = id === "screen-trip-detail" || id === "screen-poi-detail";
   document.querySelector(".tab-bar").classList.toggle("hidden", isDetail);
   document.getElementById(id).scrollTop = 0;
 }
@@ -314,6 +314,23 @@ function closeTripDetail() {
   if (DETAIL_FROM === "screen-trips") renderTripList();
   if (DETAIL_FROM === "screen-calendar") renderCalendar();
 }
+
+var POI_RETURN = "screen-trip-detail";
+function openPoiDetail(tripId, kind, name) {
+  var trip = getTrip(tripId);
+  var city = trip ? trip.city : tripId;
+  var recs = APP_DATA.destinationRecs[city] || APP_DATA.destinationRecs[String(city).replace(/市$/, "")];
+  if (!recs) return;
+  var list = kind === "dining" ? recs.dining : recs.attractions;
+  var poi = (list || []).find(function (p) { return p.name === name; });
+  if (!poi) return;
+  var wishNames = (trip && trip.wishlist || []).map(function (w) { return w.name; });
+  POI_RETURN = document.querySelector(".screen.active").id;
+  document.querySelector("#screen-poi-detail .screen-body").innerHTML =
+    renderPoiDetail(poi, { tripId: tripId, kind: kind, wishNames: wishNames });
+  showScreen("screen-poi-detail");
+}
+function closePoiDetail() { showScreen(POI_RETURN); }
 
 /* ---------- PWA 更新检测(桌面版自动拉新) ---------- */
 
