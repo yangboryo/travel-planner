@@ -15,4 +15,9 @@ assert.strictEqual(keep.cabinClass, "business");
 assert.deepStrictEqual(keep.cuisine, ["local"]);
 assert.strictEqual(keep.budgetTier, "comfort");
 
+var dm = rec.haversineM(22.3027, 114.1772, 22.2759, 114.1455);
+assert.ok(dm > 3000 && dm < 5000);
+assert.strictEqual(rec.haversineM(0, 0, 0, 0), 0);
+assert.strictEqual(dm, Math.round(dm));
+
 console.log("Task1 OK");
