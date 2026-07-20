@@ -330,7 +330,10 @@ function sectionLodging(trip) {
     { key: "checkIn", label: "入住" }, { key: "checkOut", label: "退房" },
     { key: "confirmNo", label: "确认号" }
   ];
-  var body = fields.map(function (f) {
+  var recs = APP_DATA.destinationRecs[trip.city] || APP_DATA.destinationRecs[String(trip.city).replace(/市$/, "")];
+  var recHTML = recs && typeof renderRecLodging === "function"
+    ? renderRecLodging(recs.lodging, l, getPrefs(), { currency: trip.currency, toAUD: toAUD }) : "";
+  var body = recHTML + '<div class="field-label">已订酒店信息</div>' + fields.map(function (f) {
     return '<div class="profile-row lodging-row" onclick="editLodging(\'' + trip.id + '\',\'' + f.key + '\',\'' + f.label + '\')">' +
       '<span class="profile-key">' + f.label + '</span>' +
       '<span class="lodging-val">' + (l[f.key] || '<span style="color:var(--text-faint)">点击填写</span>') + '</span></div>';

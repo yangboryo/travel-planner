@@ -153,6 +153,24 @@ function renderRecTransport(rec, prefs, ctx) {
   return html + '</div>';
 }
 
+function renderRecLodging(recArr, booked, prefs, ctx) {
+  var html = "";
+  if (booked && booked.name) html += '<div class="rl-booked"><span class="badge ok">已预订</span> <strong>' + booked.name + '</strong>' +
+    (booked.address ? '<div class="rec-desc">' + booked.address + (booked.checkIn ? ' · ' + booked.checkIn : '') + '</div>' : '') + '</div>';
+  var ranked = rankLodging(recArr || [], prefs);
+  if (ranked.length) {
+    html += '<div class="field-label">' + (booked && booked.name ? "还想看看?为你精选" : "为你精选") + '</div>';
+    ranked.slice(0, 3).forEach(function (l) {
+      var aud = ctx.toAUD ? ctx.toAUD(l.pricePerNight, ctx.currency) : null;
+      html += '<div class="rl-item' + (l.matched ? " pref" : "") + '"><div class="rl-top"><span>' + l.name + ' · ' + l.area + '</span>' +
+        '<span class="rl-price">' + (ctx.currency || "") + ' ' + fmtMoney(l.pricePerNight) + '<em>/晚</em></span></div>' +
+        '<div class="rl-tags">' + (l.tags || []).map(function (t) { return '<span class="rl-tag">' + t + '</span>'; }).join("") + '</div>' +
+        (l.why ? '<div class="poi-why">✨ ' + l.why + '</div>' : '') + '</div>';
+    });
+  }
+  return html;
+}
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     PREFS_DEFAULT: PREFS_DEFAULT,
