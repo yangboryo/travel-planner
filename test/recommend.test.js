@@ -20,4 +20,11 @@ assert.ok(dm > 3000 && dm < 5000);
 assert.strictEqual(rec.haversineM(0, 0, 0, 0), 0);
 assert.strictEqual(dm, Math.round(dm));
 
+var cabins = [{ "class": "economy", priceLocal: 1400 }, { "class": "business", priceLocal: 4600 }];
+var ordered = rec.orderCabins(cabins, "business");
+assert.strictEqual(ordered[0]["class"], "business");
+assert.strictEqual(ordered[0].preferred, true);
+assert.strictEqual(ordered[1].preferred, false);
+assert.strictEqual(rec.orderCabins(cabins, "premium")[0].preferred, false);
+
 console.log("Task1 OK");

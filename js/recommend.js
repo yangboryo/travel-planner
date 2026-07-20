@@ -30,10 +30,19 @@ function haversineM(lat1, lon1, lat2, lon2) {
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
+function orderCabins(cabins, cabinClass) {
+  var out = (cabins || []).map(function (c) {
+    return { "class": c["class"], priceLocal: c.priceLocal, note: c.note, preferred: c["class"] === cabinClass };
+  });
+  out.sort(function (a, b) { return (b.preferred ? 1 : 0) - (a.preferred ? 1 : 0); });
+  return out;
+}
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     PREFS_DEFAULT: PREFS_DEFAULT,
     normalizePrefs: normalizePrefs,
-    haversineM: haversineM
+    haversineM: haversineM,
+    orderCabins: orderCabins
   };
 }
