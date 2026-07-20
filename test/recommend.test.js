@@ -37,4 +37,16 @@ assert.strictEqual(ranked[0].matched, true);
 assert.ok(ranked[0].why.length > 0);
 assert.strictEqual(ranked[1].matched, false);
 
+var dining = [
+  { name: "本地菜馆", cuisineTags: ["local"], rating: 4.2, lat: 22.30, lon: 114.17 },
+  { name: "网红店", cuisineTags: ["trending"], rating: 4.8, lat: 22.31, lon: 114.20 }
+];
+assert.strictEqual(rec.rankPois(dining, { sort: "rating", anchor: null, prefs: {}, kind: "dining" })[0].name, "网红店");
+assert.strictEqual(rec.rankPois(dining, { sort: "distance", anchor: { lat: 22.30, lon: 114.17 }, prefs: {}, kind: "dining" })[0].name, "本地菜馆");
+var localFirst = rec.rankPois(dining, { sort: "rating", anchor: null, prefs: { cuisine: ["local"] }, kind: "dining" });
+assert.strictEqual(localFirst[0].name, "本地菜馆");
+assert.ok(localFirst[0].why.length > 0);
+var attractions = [{ name: "暴走点", rating: 4.5, bestFor: ["packed"] }, { name: "深度点", rating: 4.5, bestFor: ["relaxed"] }];
+assert.strictEqual(rec.rankPois(attractions, { sort: "rating", prefs: { travelStyle: "relaxed" }, kind: "attractions" })[0].name, "深度点");
+
 console.log("Task1 OK");

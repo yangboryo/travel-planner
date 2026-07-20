@@ -55,12 +55,48 @@ function rankLodging(lodgingArr, prefs) {
   });
 }
 
+var CUISINE_LABEL = { local: "本地菜", halal: "清真", vegetarian: "素食", spicy: "嗜辣", trending: "网红店" };
+function poiWhy(poi, prefs, kind) {
+  var p = normalizePrefs(prefs);
+  if (kind === "dining") {
+    var hit = (poi.cuisineTags || []).filter(function (t) { return p.cuisine.indexOf(t) !== -1; });
+    if (hit.length) return "贴合你的" + hit.map(function (t) { return CUISINE_LABEL[t] || t; }).join("、") + "偏好";
+    return poi.michelin ? "米其林推荐" : "";
+  }
+  if (kind === "attractions" && (poi.bestFor || []).indexOf(p.travelStyle) !== -1) {
+    return "适合你的" + ({ packed: "暴走打卡", balanced: "均衡", relaxed: "悠闲深度" }[p.travelStyle]) + "节奏";
+  }
+  return "";
+}
+
+function rankPois(pois, opts) {
+  opts = opts || {};
+  var p = normalizePrefs(opts.prefs), anchor = opts.anchor, kind = opts.kind;
+  var list = (pois || []).map(function (poi) {
+    var o = {}; for (var k in poi) o[k] = poi[k];
+    o.distanceM = anchor && poi.lat != null && poi.lon != null ? haversineM(anchor.lat, anchor.lon, poi.lat, poi.lon) : null;
+    o.why = poiWhy(poi, p, kind);
+    o._hit = kind === "dining" ? (poi.cuisineTags || []).some(function (t) { return p.cuisine.indexOf(t) !== -1; }) :
+      (kind === "attractions" && (poi.bestFor || []).indexOf(p.travelStyle) !== -1);
+    return o;
+  });
+  list.sort(function (a, b) {
+    if (opts.sort === "distance" && a.distanceM != null && b.distanceM != null) return a.distanceM - b.distanceM;
+    if (a._hit !== b._hit) return (b._hit ? 1 : 0) - (a._hit ? 1 : 0);
+    return (b.rating || 0) - (a.rating || 0);
+  });
+  list.forEach(function (o) { delete o._hit; });
+  return list;
+}
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     PREFS_DEFAULT: PREFS_DEFAULT,
     normalizePrefs: normalizePrefs,
     haversineM: haversineM,
     orderCabins: orderCabins,
-    rankLodging: rankLodging
+    rankLodging: rankLodging,
+    poiWhy: poiWhy,
+    rankPois: rankPois
   };
 }
