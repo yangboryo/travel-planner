@@ -54,6 +54,9 @@ function renderTripDetail(trip) {
   html += renderSections(trip);
 
   body.innerHTML = html;
+  ["sc-recdining", "sc-recattractions"].forEach(function (id) {
+    var el = document.getElementById(id); if (el) el.classList.add("open");
+  });
 }
 
 /* 各板块拼装:后续任务在此追加 */
@@ -542,6 +545,29 @@ function addRecToWish(tripId, name, type) {
   }
   saveState();
   refreshTripDetail();
+}
+
+function poiSectionBody(trip, kind) {
+  var recs = APP_DATA.destinationRecs[trip.city] || APP_DATA.destinationRecs[String(trip.city).replace(/市$/, "")];
+  if (!recs) return null;
+  var list = kind === "dining" ? recs.dining : recs.attractions;
+  if (!list || !list.length) return null;
+  var anchor = trip.lodging && trip.lodging.lat != null ? { lat: trip.lodging.lat, lon: trip.lodging.lon } : (recs.center || null);
+  var ranked = rankPois(list, { sort: "rating", anchor: anchor, prefs: getPrefs(), kind: kind });
+  var wishNames = (trip.wishlist || []).map(function (w) { return w.name; });
+  return ranked.map(function (poi) {
+    return renderPoiCard(poi, { tripId: trip.id, kind: kind, wishNames: wishNames, anchorLabel: "" });
+  }).join("");
+}
+
+function sectionRecDining(trip) {
+  var body = poiSectionBody(trip, "dining");
+  return body == null ? "" : sectionCard("recdining", "🍜", "餐厅", "按你的口味排序", body);
+}
+
+function sectionRecAttractions(trip) {
+  var body = poiSectionBody(trip, "attractions");
+  return body == null ? "" : sectionCard("recattractions", "🏞", "景点", "按你的风格排序", body);
 }
 
 function refreshTripDetail() {
