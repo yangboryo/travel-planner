@@ -4,17 +4,13 @@ const APP_DATA = {
   /* 护照信息默认为空,在"我的"页设置,存 localStorage */
   passport: { nationality: "", expiry: "" },
 
-  /* 相对 AUD 的汇率:1 AUD = rate 单位外币 */
-  /* 相对 AUD 的汇率:1 AUD = rate 单位外币(阶段二接入实时汇率) */
+  /* 相对 AUD 的汇率:1 AUD = rate 单位外币(阶段二接入实时汇率)
+     仅保留主要货币 + 亚太常用货币 */
   fxRates: {
-    AUD: 1, HKD: 5.1, MOP: 5.25, JPY: 97, THB: 23.5, CNY: 4.7, SGD: 0.88,
-    KRW: 930, USD: 0.65, EUR: 0.61, GBP: 0.52, TWD: 21, MYR: 3.1,
-    VND: 16400, IDR: 10500, PHP: 38, INR: 55, CAD: 0.91, NZD: 1.11,
-    SEK: 7.0, DKK: 4.5, NOK: 7.1, PLN: 2.6, CZK: 15, HUF: 240,
-    CHF: 0.59, TRY: 21, RUB: 58, BRL: 3.8, MXN: 13,
-    ARS: 700, CLP: 650, AED: 2.4, SAR: 2.4, QAR: 2.4,
-    EGP: 32, ZAR: 12, KES: 85, MAD: 6.5, ISK: 91, RON: 3.0, BGN: 1.2,
-    KHR: 2700, LAK: 14400, MMK: 1400
+    AUD: 1, USD: 0.65, EUR: 0.61, GBP: 0.52, CHF: 0.59,
+    JPY: 97, CNY: 4.7, HKD: 5.1, MOP: 5.25, TWD: 21, KRW: 930,
+    SGD: 0.88, THB: 23.5, MYR: 3.1, IDR: 10500, VND: 16400, PHP: 38,
+    INR: 55, NZD: 1.11, CAD: 0.91, AED: 2.4
   },
 
   /* 国家 → 默认币种，新建行程时自动匹配(可手动改) */

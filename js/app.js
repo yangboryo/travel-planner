@@ -1,5 +1,7 @@
 /* 应用层:store(localStorage)、导航切换、入口 */
 
+var APP_VERSION = "v9"; /* 与 sw.js 的 VERSION 保持一致 */
+
 /* ---------- store ---------- */
 
 var STORE_KEY = "travel-planner";
@@ -64,6 +66,71 @@ function updateTrip(id, updates) {
   if (!trip) return;
   Object.keys(updates).forEach(function (k) { trip[k] = updates[k]; });
   saveState();
+}
+
+/* ---------- 数据备份/恢复(防 iOS 清空本地存储) ---------- */
+
+/* 导出:剔除天气缓存(可重新获取),只备份真正的用户数据 */
+function buildBackup() {
+  var backup = { trips: STATE.trips, passport: STATE.passport, _v: 1, _at: new Date().toISOString() };
+  return JSON.stringify(backup);
+}
+
+function exportBackup() {
+  var text = buildBackup();
+  /* 主方案:复制到剪贴板 */
+  var copied = false;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function () {}).catch(function () {});
+    copied = true;
+  }
+  /* 补充:尝试下载文件 */
+  try {
+    var blob = new Blob([text], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "出行助理备份-" + toDateStr(new Date()) + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch (e) { /* 部分 iOS 独立 PWA 不支持下载,靠剪贴板兜底 */ }
+  alert(copied
+    ? "备份已复制到剪贴板 ✓\n请粘贴到「备忘录」或发给自己的邮件保存。\n(同时尝试下载了备份文件)"
+    : "已生成备份文件,请保存到「文件」App。");
+}
+
+/* 从文本恢复 */
+function restoreFromText() {
+  var text = prompt("粘贴之前导出的备份内容:");
+  if (!text) return;
+  applyBackup(text);
+}
+
+/* 从文件恢复 */
+function restoreFromFile() {
+  var input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json,application/json";
+  input.addEventListener("change", function () {
+    var file = input.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () { applyBackup(reader.result); };
+    reader.readAsText(file);
+  });
+  input.click();
+}
+
+function applyBackup(text) {
+  var data;
+  try { data = JSON.parse(text); } catch (e) { alert("备份内容格式不对,无法恢复。"); return; }
+  if (!data || !Array.isArray(data.trips)) { alert("这不是有效的出行助理备份。"); return; }
+  if (!confirm("将用备份覆盖当前数据(" + data.trips.length + " 个行程),确定吗?")) return;
+  STATE.trips = data.trips;
+  if (data.passport) STATE.passport = data.passport;
+  saveState();
+  alert("恢复成功 ✓");
+  location.reload();
 }
 
 /* ---------- 天气服务(Open-Meteo,免费无密钥) ---------- */

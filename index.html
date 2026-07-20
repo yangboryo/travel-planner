@@ -50,10 +50,38 @@
 <script src="js/views-trip.js"></script>
 <script src="js/app.js"></script>
 <script>
-/* 注册 Service Worker,实现完全离线运行 */
+/* Service Worker:离线运行 + 自动更新 */
 if ("serviceWorker" in navigator) {
+  var swRefreshing = false;
+  /* 新 SW 接管后自动刷新一次,确保拿到最新代码 */
+  navigator.serviceWorker.addEventListener("controllerchange", function () {
+    if (swRefreshing) return;
+    swRefreshing = true;
+    location.reload();
+  });
   window.addEventListener("load", function () {
-    navigator.serviceWorker.register("./sw.js");
+    navigator.serviceWorker.register("./sw.js").then(function (reg) {
+      reg.update();
+      /* 每次切回前台时检查更新(iOS 从桌面重新打开时触发) */
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "visible") reg.update();
+      });
+    });
+  });
+}
+
+/* 手动检查更新(“我的 → 关于 → 检查更新”调用) */
+function checkForUpdate() {
+  if (!("serviceWorker" in navigator)) { alert("当前环境不支持更新检查,请直接刷新页面。"); return; }
+  navigator.serviceWorker.getRegistration().then(function (reg) {
+    if (!reg) { alert("请先刷新页面完成安装。"); return; }
+    reg.update().then(function () {
+      if (reg.installing || reg.waiting) {
+        alert("发现新版本,正在更新,页面将自动刷新…");
+      } else {
+        alert("已是最新版本(" + (typeof APP_VERSION !== "undefined" ? APP_VERSION : "") + ")。");
+      }
+    }).catch(function () { alert("检查更新失败,请检查网络。"); });
   });
 }
 </script>

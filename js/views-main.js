@@ -342,18 +342,28 @@ function renderProfile() {
     '<input id="fx-amount-b" class="field-input" type="number" oninput="fxConvert(\'b\')">' +
     '<select id="fx-cur-b" class="field-input fx-select" onchange="fxConvert(\'a\')">' + fxOptions("HKD") + '</select>' +
     '</div>' +
-    '<div class="fx-note">mock 汇率,阶段二接入实时汇率</div>' +
+    '<div class="fx-note">参考汇率,以银行实际成交为准</div>' +
     '</div>';
 
-  html += '<div class="section-label">设置</div>' +
-    '<div class="card" style="padding:4px 16px;">' +
-    ['🔔 出行提醒', '🌐 语言', 'ℹ️ 关于'].map(function (s) {
-      return '<div class="profile-row settings-row"><span>' + s + '</span><span style="color:var(--text-faint)">›</span></div>';
-    }).join("") +
-    '</div>';
+  html += '<div class="section-label">数据备份(重要)</div>' +
+    '<div class="card">' +
+    '<div class="fx-note" style="text-align:left;margin:0 0 10px;">iPhone 长期不打开可能会清空 App 数据。建议定期导出备份,换机或数据丢失后可恢复。</div>' +
+    '<button class="btn-primary" style="width:100%;margin-bottom:8px;" onclick="exportBackup()">📤 导出备份</button>' +
+    '<div class="date-row">' +
+    '<button class="btn-secondary" style="flex:1;" onclick="restoreFromText()">📋 粘贴恢复</button>' +
+    '<button class="btn-secondary" style="flex:1;" onclick="restoreFromFile()">📁 文件恢复</button>' +
+    '</div></div>';
+
+  html += '<div class="section-label">关于</div>' +
+    '<div class="card"><div class="profile-row"><span class="profile-key">版本</span>' +
+    '<span id="app-version">加载中…</span></div>' +
+    '<div class="profile-row lodging-row" onclick="checkForUpdate()"><span>检查更新</span>' +
+    '<span style="color:var(--primary)">立即检查 ›</span></div></div>';
 
   body.innerHTML = html;
   fxConvert("a");
+  var vEl = document.getElementById("app-version");
+  if (vEl) vEl.textContent = (typeof APP_VERSION !== "undefined" ? APP_VERSION : "—");
 }
 
 function editPassport(key, label) {
@@ -415,7 +425,7 @@ function openNewTripSheet() {
     '<span style="color:var(--text-faint)">点击搜索城市(全球)</span></div>' +
     '<label class="field-label">币种（选完目的地自动匹配）</label>' +
     '<select id="nt-currency" class="field-input">' +
-    Object.keys(APP_DATA.fxRates).filter(function (c) { return c !== "AUD"; })
+    Object.keys(APP_DATA.fxRates)
       .map(function (c) { return '<option>' + c + "</option>"; }).join("") +
     '</select>' +
     '<div class="date-row">' +
@@ -435,6 +445,8 @@ function pickTripCity() {
     if (el) el.innerHTML = flagEmoji(loc.countryCode) + " " + loc.name + ' <span class="tip-label">' + loc.country + "</span>";
     /* 根据目的地国家自动匹配币种(先中文名,再 ISO 码保底) */
     var autoCur = APP_DATA.countryCurrencies[loc.country] || APP_DATA.countryCodeCurrencies[loc.countryCode];
+    /* 若匹配到的币种已被精简掉,回退到 USD */
+    if (autoCur && !APP_DATA.fxRates[autoCur]) autoCur = "USD";
     if (autoCur) {
       var sel = document.getElementById("nt-currency");
       if (sel) sel.value = autoCur;

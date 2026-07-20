@@ -123,6 +123,18 @@ body {
   cursor: pointer;
 }
 
+.btn-secondary {
+  border: 1px solid var(--primary);
+  background: #fff;
+  color: var(--primary);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
 .page-title {
   font-size: 24px;
   font-weight: 700;
