@@ -332,24 +332,13 @@ function renderProfile() {
     '</div>';
 
   var pf = getPrefs();
-  var prefLabels = {
-    budgetTier: { title: "预算档次", map: { economy: "经济", comfort: "舒适", luxury: "豪华" } },
-    cabinClass: { title: "舱位偏好", map: { economy: "经济舱", premium: "超经", business: "商务舱" } },
-    lodgingLocation: { title: "住宿位置", map: { central: "市中心", "near-transit": "近地铁", quiet: "安静" } },
-    travelStyle: { title: "出行风格", map: { packed: "暴走打卡", balanced: "均衡", relaxed: "悠闲深度" } }
-  };
-  var lodgeTypeMap = { hotel: "连锁酒店", boutique: "精品民宿", hostel: "青旅", resort: "度假村", apartment: "公寓" };
-  var cuisineMap = { local: "本地菜", halal: "清真", vegetarian: "素食", spicy: "嗜辣", trending: "网红店" };
   html += '<div class="section-label">出行喜好(个性化推荐依据)</div><div class="card">';
-  ["budgetTier", "cabinClass", "lodgingLocation", "travelStyle"].forEach(function (k) {
-    var conf = prefLabels[k];
-    html += '<div class="profile-row lodging-row" onclick="editPrefSingle(\'' + k + '\')">' +
-      '<span class="profile-key">' + conf.title + '</span><span>' + (conf.map[pf[k]] || pf[k]) + '</span></div>';
-  });
-  html += '<div class="profile-row lodging-row" onclick="editPrefMulti(\'lodgingTypes\')"><span class="profile-key">住宿类型</span><span>' +
-    (pf.lodgingTypes.map(function (t) { return lodgeTypeMap[t] || t; }).join("、") || "不限") + '</span></div>';
-  html += '<div class="profile-row lodging-row" onclick="editPrefMulti(\'cuisine\')"><span class="profile-key">口味</span><span>' +
-    (pf.cuisine.length ? pf.cuisine.map(function (t) { return cuisineMap[t] || t; }).join("、") : "不限") + '</span></div></div>';
+  html += prefSelectHTML("budgetTier", "预算档次", pf.budgetTier);
+  html += prefSelectHTML("cabinClass", "舱位偏好", pf.cabinClass);
+  html += prefSelectHTML("lodgingLocation", "住宿位置", pf.lodgingLocation);
+  html += prefSelectHTML("travelStyle", "出行风格", pf.travelStyle);
+  html += prefChecksHTML("lodgingTypes", "住宿类型", pf.lodgingTypes);
+  html += prefChecksHTML("cuisine", "口味偏好", pf.cuisine) + '</div>';
 
   html += '<div class="section-label">汇率换算器</div>' +
     '<div class="card">' +
@@ -654,37 +643,54 @@ function poiGroupHTML(list, kind, anchor, tripId, wishNames, anchorLabel) {
     return renderPoiCard(poi, { tripId: tripId, kind: kind, wishNames: wishNames, anchorLabel: anchorLabel });
   }).join("");
 }
-function nearbyPois(loc) {
-  var best = null, bestD = Infinity, bestCity = "";
-  Object.keys(APP_DATA.destinationRecs).forEach(function (city) {
-    var r = APP_DATA.destinationRecs[city], d = haversineM(loc.lat, loc.lon, r.center.lat, r.center.lon);
-    if (d < bestD) { bestD = d; best = r; bestCity = city; }
+var NEARBY_CACHE = { dining: [], attractions: [] };
+
+function uniqueNearby(list) {
+  var seen = {};
+  return list.filter(function (p) {
+    var key = p.name + "|" + Math.round(p.lat * 10000) + "|" + Math.round(p.lon * 10000);
+    if (seen[key]) return false;
+    seen[key] = true; return true;
   });
-  return best ? { dining: best.dining || [], attractions: best.attractions || [], city: bestCity } : { dining: [], attractions: [], city: "" };
 }
+
+function fetchNearbyPois(loc, cb) {
+  var around = "(around:5000," + loc.lat + "," + loc.lon + ")";
+  var query = '[out:json][timeout:20];(' +
+    'nwr' + around + '[amenity~"^(restaurant|cafe|fast_food)$"][name];' +
+    'nwr' + around + '[tourism~"^(attraction|museum|gallery|viewpoint|zoo|theme_park)$"][name];' +
+    'nwr' + around + '[leisure="park"][name];);out center tags 100;';
+  fetch("https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query)).then(function (resp) {
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    return resp.json();
+  }).then(function (data) {
+    var dining = [], attractions = [];
+    (data.elements || []).forEach(function (el) {
+      var kind = el.tags && el.tags.amenity ? "dining" : "attractions";
+      var poi = osmElementToPoi(el, kind, loc);
+      if (poi.lat == null || poi.lon == null) return;
+      (kind === "dining" ? dining : attractions).push(poi);
+    });
+    dining = uniqueNearby(dining).sort(function (a, b) { return a.distanceM - b.distanceM; }).slice(0, 20);
+    attractions = uniqueNearby(attractions).sort(function (a, b) { return a.distanceM - b.distanceM; }).slice(0, 20);
+    NEARBY_CACHE = { dining: dining, attractions: attractions };
+    cb(null, NEARBY_CACHE);
+  }).catch(function (err) { cb(err); });
+}
+
 function renderNearby(box) {
-  box.innerHTML = '<div class="empty-inline">定位中…</div>';
+  box.innerHTML = '<div class="empty-inline">正在获取真实位置…</div>';
   requestGeo(function (loc) {
     if (!loc) { box.innerHTML = '<div class="empty-state">未获取到定位。请到「我的」设置现在所在地。</div>'; return; }
-    var near = nearbyPois(loc);
-    var nearTrip = getTrips().find(function (t) { return t.city === near.city; });
-    var nearTripId = nearTrip ? nearTrip.id : near.city;
-    var nearWishNames = nearTrip ? (nearTrip.wishlist || []).map(function (w) { return w.name; }) : [];
-    var html = '<div class="explore-head"><span>附近 · ' + (loc.name || near.city) + '</span>' + sortToggleHTML("离我最近") + '</div>' +
-      '<div class="poi-group-label">🍽 好吃</div>' + (poiGroupHTML(near.dining, "dining", loc, nearTripId, nearWishNames, "") || '<div class="empty-inline">附近暂无收录</div>') +
-      '<div class="poi-group-label">🎡 好玩</div>' + (poiGroupHTML(near.attractions, "attractions", loc, nearTripId, nearWishNames, "") || '<div class="empty-inline">附近暂无收录</div>');
-    var tripCities = getTrips().map(function (t) { return t.city; });
-    var discover = Object.keys(APP_DATA.destinationRecs).filter(function (city) { return tripCities.indexOf(city) === -1; });
-    if (discover.length) {
-      html += '<div class="poi-group-label">🌏 发现更多目的地</div>';
-      discover.forEach(function (city) {
-        var r = APP_DATA.destinationRecs[city];
-        html += '<div class="card trip-card" onclick="previewDestination(\'' + city + '\')"><div class="trip-card-top">' +
-          '<span class="trip-city">' + city + '</span><span>›</span></div><div class="trip-dates">' +
-          ((r.dining || []).length + (r.attractions || []).length) + ' 个精选推荐</div></div>';
-      });
-    }
-    box.innerHTML = html;
+    box.innerHTML = '<div class="empty-inline">正在查询 5 公里内的餐馆和景点…</div>';
+    fetchNearbyPois(loc, function (err, near) {
+      if (err) { box.innerHTML = '<div class="empty-state">附近数据查询失败，请检查网络后重试。<br><button class="btn-secondary" onclick="renderExploreContent()">重新查询</button></div>'; return; }
+      var html = '<div class="nearby-privacy">📍 使用设备真实位置查询 5 公里范围；坐标仅发送给 OpenStreetMap 查询，不保存、不上传同步。</div>' +
+        '<div class="explore-head"><span>我的真实附近</span>' + sortToggleHTML("离我最近") + '</div>' +
+        '<div class="poi-group-label">🍽 好吃</div>' + (poiGroupHTML(near.dining, "dining", loc, "nearby", [], "") || '<div class="empty-inline">5 公里内暂无有名称的餐饮数据</div>') +
+        '<div class="poi-group-label">🎡 好玩</div>' + (poiGroupHTML(near.attractions, "attractions", loc, "nearby", [], "") || '<div class="empty-inline">5 公里内暂无有名称的景点数据</div>');
+      box.innerHTML = html;
+    });
   });
 }
 
@@ -717,22 +723,25 @@ var PREF_OPTIONS = {
   cuisine: [["local","本地菜"],["halal","清真"],["vegetarian","素食"],["spicy","嗜辣"],["trending","网红店"]]
 };
 
-function editPrefSingle(key) {
-  var opts = PREF_OPTIONS[key], cur = getPrefs()[key];
-  var lines = opts.map(function (o, i) { return (i + 1) + ". " + o[1] + (o[0] === cur ? " ✓" : ""); }).join("\n");
-  var ans = prompt("选择(输入序号):\n" + lines);
-  if (ans === null) return;
-  var idx = parseInt(ans, 10) - 1;
-  if (idx >= 0 && idx < opts.length) { setPrefsField(key, opts[idx][0]); renderProfile(); }
+function prefSelectHTML(key, title, current) {
+  return '<div class="profile-row pref-control-row"><span class="profile-key">' + title + '</span>' +
+    '<select class="pref-select" onchange="setPrefsField(\'' + key + '\',this.value)">' +
+    PREF_OPTIONS[key].map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === current ? ' selected' : '') + '>' + o[1] + '</option>'; }).join("") +
+    '</select></div>';
 }
 
-function editPrefMulti(key) {
-  var opts = PREF_OPTIONS[key], cur = getPrefs()[key] || [];
-  var lines = opts.map(function (o, i) { return (i + 1) + ". " + o[1] + (cur.indexOf(o[0]) !== -1 ? " ✓" : ""); }).join("\n");
-  var ans = prompt("多选(逗号分隔序号,如 1,3;留空=不限):\n" + lines);
-  if (ans === null) return;
-  var picked = ans.split(",").map(function (s) { return parseInt(s.trim(), 10) - 1; })
-    .filter(function (i) { return i >= 0 && i < opts.length; }).map(function (i) { return opts[i][0]; });
-  setPrefsField(key, picked);
-  renderProfile();
+function prefChecksHTML(key, title, current) {
+  current = current || [];
+  return '<div class="pref-check-row"><div class="profile-key">' + title + '</div><div class="pref-checks">' +
+    PREF_OPTIONS[key].map(function (o) {
+      return '<label><input type="checkbox"' + (current.indexOf(o[0]) !== -1 ? ' checked' : '') +
+        ' onchange="togglePrefMulti(\'' + key + '\',\'' + o[0] + '\',this.checked)"> ' + o[1] + '</label>';
+    }).join("") + '</div></div>';
+}
+
+function togglePrefMulti(key, value, checked) {
+  var current = (getPrefs()[key] || []).slice();
+  if (checked && current.indexOf(value) === -1) current.push(value);
+  if (!checked) current = current.filter(function (v) { return v !== value; });
+  setPrefsField(key, current);
 }

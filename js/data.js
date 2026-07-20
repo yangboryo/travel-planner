@@ -377,4 +377,25 @@ const APP_DATA = {
   hk.phone = "+852 2788 1226";
   hk.website = "https://timhowan.com";
   hk.hours = "10:00–21:30 · 每日营业";
+
+  /* 所有目的地 POI 都提供完整详情字段；缺少公开资料时明确标注，不伪造号码或照片。 */
+  function fallbackImage(kind, name) {
+    var icon = kind === "dining" ? "🍽" : "📍";
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520"><rect width="100%" height="100%" fill="#B5D4F4"/>' +
+      '<text x="50%" y="42%" text-anchor="middle" font-size="80">' + icon + '</text><text x="50%" y="62%" text-anchor="middle" font-size="34" fill="#0C447C">' +
+      String(name).replace(/[&<>]/g, "") + ' · 暂无公开实景图</text></svg>';
+    return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
+  }
+  Object.keys(APP_DATA.destinationRecs).forEach(function (city) {
+    ["dining", "attractions"].forEach(function (kind) {
+      APP_DATA.destinationRecs[city][kind].forEach(function (poi) {
+        poi.address = poi.address || city + " · 请点地图查看该地点的实时详细地址";
+        poi.phone = poi.phone || "暂无公开电话";
+        poi.website = poi.website || "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(city + " " + poi.name);
+        poi.hours = poi.hours || "开放/营业时间请通过地图或官方渠道核实";
+        poi.image = poi.image || fallbackImage(kind, poi.name);
+        poi.source = poi.source || "精选目的地资料";
+      });
+    });
+  });
 }());

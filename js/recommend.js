@@ -89,6 +89,48 @@ function rankPois(pois, opts) {
   return list;
 }
 
+function osmAddress(tags) {
+  if (tags["addr:full"]) return tags["addr:full"];
+  return [tags["addr:housenumber"], tags["addr:street"], tags["addr:suburb"], tags["addr:city"]]
+    .filter(Boolean).join(" ") || "地址请查看地图";
+}
+
+function poiPlaceholderImage(kind, name) {
+  var icon = kind === "dining" ? "🍽" : "📍";
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520"><rect width="100%" height="100%" fill="#B5D4F4"/>' +
+    '<text x="50%" y="42%" text-anchor="middle" font-size="80">' + icon + '</text><text x="50%" y="62%" text-anchor="middle" font-size="34" fill="#0C447C">' +
+    String(name || "附近地点").replace(/[&<>]/g, "") + ' · 暂无公开实景图</text></svg>';
+  return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
+}
+
+function osmImage(tags, kind, name) {
+  if (tags.image && /^https?:\/\//.test(tags.image)) return tags.image;
+  var commons = tags.wikimedia_commons || "";
+  if (commons.indexOf("File:") === 0) {
+    return "https://commons.wikimedia.org/wiki/Special:Redirect/file/" + encodeURIComponent(commons.slice(5));
+  }
+  return poiPlaceholderImage(kind, name);
+}
+
+function osmElementToPoi(el, kind, anchor) {
+  var tags = el.tags || {};
+  var lat = el.lat != null ? el.lat : el.center && el.center.lat;
+  var lon = el.lon != null ? el.lon : el.center && el.center.lon;
+  var name = tags["name:zh"] || tags.name || tags.brand || "未命名地点";
+  var phone = tags["contact:phone"] || tags.phone || "暂无公开电话";
+  var website = tags["contact:website"] || tags.website || "https://www.openstreetmap.org/" + el.type + "/" + el.id;
+  return {
+    name: name, lat: lat, lon: lon,
+    distanceM: anchor && lat != null && lon != null ? haversineM(anchor.lat, anchor.lon, lat, lon) : null,
+    image: osmImage(tags, kind, name), address: osmAddress(tags), phone: phone, website: website,
+    hours: tags.opening_hours || "营业时间请联系商家或查看地图", area: tags["addr:suburb"] || tags["addr:city"] || "附近",
+    desc: tags.description || (kind === "dining" ? (tags.cuisine ? "菜系: " + tags.cuisine : "附近餐饮") : (tags.tourism || "附近景点")),
+    cuisineTags: tags.cuisine ? tags.cuisine.split(/[;,]/) : [], priceLevel: 2, rating: null, michelin: false,
+    category: tags.tourism || tags.leisure || "景点", durationH: 1.5, bestFor: ["packed", "balanced", "relaxed"],
+    source: "OpenStreetMap"
+  };
+}
+
 function priceDollars(level) { return level ? new Array(level + 1).join("$") : ""; }
 function distanceLabel(m) { return m == null ? "" : (m < 1000 ? m + "m" : (m / 1000).toFixed(1) + "km"); }
 
@@ -126,8 +168,10 @@ function renderPoiDetail(poi, ctx) {
     (poi.rating ? ' · ★ ' + poi.rating : '') + '</div><div class="poi-detail-desc">' + (poi.desc || "") + '</div>';
   if (poi.why) html += '<div class="poi-why-box">✨ 为你推荐:' + poi.why + '</div>';
   if (poi.tips) html += '<div class="poi-why-box tip">💡 ' + poi.tips + '</div>';
+  if (poi.source) html += '<div class="poi-detail-sub">资料来源: ' + poi.source + '，出发前请再次核实</div>';
   html += infoRow("📍", "地址", poi.address, '<a class="poi-infoact" href="https://maps.google.com/?q=' + mapQ + '" target="_blank" rel="noopener">地图 ›</a>');
-  html += infoRow("📞", "电话", poi.phone, poi.phone ? '<a class="poi-infoact" href="tel:' + poi.phone.replace(/\s/g, "") + '">呼叫</a>' : "");
+  var canCall = poi.phone && /\d/.test(poi.phone) && poi.phone.indexOf("暂无") === -1;
+  html += infoRow("📞", "电话", poi.phone, canCall ? '<a class="poi-infoact" href="tel:' + poi.phone.replace(/\s/g, "") + '">呼叫</a>' : "");
   html += infoRow("🌐", "网站", poi.website ? poi.website.replace(/^https?:\/\//, "") : "", poi.website ? '<a class="poi-infoact" href="' + poi.website + '" target="_blank" rel="noopener">打开 ›</a>' : "");
   html += infoRow("🕐", "营业时间", poi.hours, "");
   var added = (ctx.wishNames || []).indexOf(poi.name) !== -1, safeName = poi.name.replace(/'/g, "\\'");
@@ -182,6 +226,8 @@ if (typeof module !== "undefined" && module.exports) {
     orderCabins: orderCabins,
     rankLodging: rankLodging,
     poiWhy: poiWhy,
-    rankPois: rankPois
+    rankPois: rankPois,
+    osmAddress: osmAddress,
+    osmElementToPoi: osmElementToPoi
   };
 }

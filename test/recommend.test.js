@@ -49,4 +49,14 @@ assert.ok(localFirst[0].why.length > 0);
 var attractions = [{ name: "暴走点", rating: 4.5, bestFor: ["packed"] }, { name: "深度点", rating: 4.5, bestFor: ["relaxed"] }];
 assert.strictEqual(rec.rankPois(attractions, { sort: "rating", prefs: { travelStyle: "relaxed" }, kind: "attractions" })[0].name, "深度点");
 
+var osmPoi = rec.osmElementToPoi({ type: "node", id: 1, lat: 22.3, lon: 114.17, tags: {
+  name: "测试餐厅", amenity: "restaurant", cuisine: "chinese", phone: "+852 1234 5678",
+  "addr:street": "测试街", "addr:housenumber": "8", opening_hours: "10:00-22:00"
+}}, "dining", { lat: 22.3, lon: 114.17 });
+assert.strictEqual(osmPoi.name, "测试餐厅");
+assert.strictEqual(osmPoi.phone, "+852 1234 5678");
+assert.ok(osmPoi.address.indexOf("测试街") !== -1);
+assert.ok(osmPoi.image.length > 0, "公开图片缺失时仍有明确的示意图");
+assert.strictEqual(osmPoi.distanceM, 0);
+
 console.log("Task1 OK");

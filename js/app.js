@@ -1,6 +1,6 @@
 /* 应用层:store(localStorage)、导航切换、入口 */
 
-var APP_VERSION = "v13"; /* 与 sw.js 的 VERSION 保持一致 */
+var APP_VERSION = "v14"; /* 与 sw.js 的 VERSION 保持一致 */
 
 /* ---------- store ---------- */
 
@@ -326,8 +326,13 @@ function openPoiDetail(tripId, kind, name) {
   var trip = getTrip(tripId);
   var city = trip ? trip.city : tripId;
   var recs = APP_DATA.destinationRecs[city] || APP_DATA.destinationRecs[String(city).replace(/市$/, "")];
-  if (!recs) return;
-  var list = kind === "dining" ? recs.dining : recs.attractions;
+  var list;
+  if (tripId === "nearby" && typeof NEARBY_CACHE !== "undefined") {
+    list = kind === "dining" ? NEARBY_CACHE.dining : NEARBY_CACHE.attractions;
+  } else {
+    if (!recs) return;
+    list = kind === "dining" ? recs.dining : recs.attractions;
+  }
   var poi = (list || []).find(function (p) { return p.name === name; });
   if (!poi) return;
   var wishNames = (trip && trip.wishlist || []).map(function (w) { return w.name; });
