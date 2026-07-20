@@ -97,7 +97,7 @@ function updateTrip(id, updates) {
 
 /* 导出:剔除天气缓存(可重新获取),只备份真正的用户数据 */
 function buildBackup() {
-  var backup = { trips: STATE.trips, passport: STATE.passport,
+  var backup = { trips: STATE.trips, passport: STATE.passport, prefs: STATE.prefs,
     deletedTripIds: STATE.deletedTripIds || [], _v: 2, _at: new Date().toISOString() };
   return JSON.stringify(backup);
 }
@@ -165,6 +165,7 @@ function applyBackup(text) {
   if (!confirm("将用备份覆盖当前数据(" + data.trips.length + " 个行程),确定吗?")) return;
   STATE.trips = data.trips;
   if (data.passport) STATE.passport = data.passport;
+  STATE.prefs = normalizePrefs(data.prefs);
   STATE.deletedTripIds = Array.isArray(data.deletedTripIds) ? data.deletedTripIds : [];
   saveState();
   alert("恢复成功 ✓");

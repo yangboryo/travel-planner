@@ -667,9 +667,12 @@ function renderNearby(box) {
   requestGeo(function (loc) {
     if (!loc) { box.innerHTML = '<div class="empty-state">未获取到定位。请到「我的」设置现在所在地。</div>'; return; }
     var near = nearbyPois(loc);
+    var nearTrip = getTrips().find(function (t) { return t.city === near.city; });
+    var nearTripId = nearTrip ? nearTrip.id : near.city;
+    var nearWishNames = nearTrip ? (nearTrip.wishlist || []).map(function (w) { return w.name; }) : [];
     var html = '<div class="explore-head"><span>附近 · ' + (loc.name || near.city) + '</span>' + sortToggleHTML("离我最近") + '</div>' +
-      '<div class="poi-group-label">🍽 好吃</div>' + (poiGroupHTML(near.dining, "dining", loc, near.city, [], "") || '<div class="empty-inline">附近暂无收录</div>') +
-      '<div class="poi-group-label">🎡 好玩</div>' + (poiGroupHTML(near.attractions, "attractions", loc, near.city, [], "") || '<div class="empty-inline">附近暂无收录</div>');
+      '<div class="poi-group-label">🍽 好吃</div>' + (poiGroupHTML(near.dining, "dining", loc, nearTripId, nearWishNames, "") || '<div class="empty-inline">附近暂无收录</div>') +
+      '<div class="poi-group-label">🎡 好玩</div>' + (poiGroupHTML(near.attractions, "attractions", loc, nearTripId, nearWishNames, "") || '<div class="empty-inline">附近暂无收录</div>');
     var tripCities = getTrips().map(function (t) { return t.city; });
     var discover = Object.keys(APP_DATA.destinationRecs).filter(function (city) { return tripCities.indexOf(city) === -1; });
     if (discover.length) {

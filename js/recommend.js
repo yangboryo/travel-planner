@@ -94,15 +94,16 @@ function distanceLabel(m) { return m == null ? "" : (m < 1000 ? m + "m" : (m / 1
 
 function renderPoiCard(poi, ctx) {
   var added = (ctx.wishNames || []).indexOf(poi.name) !== -1;
+  var canWish = typeof getTrip === "function" && !!getTrip(ctx.tripId);
   var meta = [];
   if (poi.rating) meta.push('<span class="poi-meta">★ ' + poi.rating + '</span>');
   if (poi.distanceM != null) meta.push('<span class="poi-meta dist">' + (ctx.anchorLabel || "") + distanceLabel(poi.distanceM) + '</span>');
   if (ctx.kind === "dining" && poi.priceLevel) meta.push('<span class="poi-price">' + priceDollars(poi.priceLevel) + '</span>');
   if (ctx.kind === "attractions" && poi.durationH) meta.push('<span class="poi-meta">' + poi.durationH + 'h</span>');
   var safeName = poi.name.replace(/'/g, "\\'");
-  var addBtn = added ? '<span class="badge">已想去</span>' :
+  var addBtn = !canWish ? "" : (added ? '<span class="badge">已想去</span>' :
     '<button class="rec-add" onclick="event.stopPropagation();addRecToWish(\'' + ctx.tripId + '\',\'' + safeName + '\',\'' +
-    (ctx.kind === "dining" ? "🍜" : "📍") + '\')">+ 想去</button>';
+    (ctx.kind === "dining" ? "🍜" : "📍") + '\')">+ 想去</button>');
   return '<div class="poi-card" onclick="openPoiDetail(\'' + ctx.tripId + '\',\'' + ctx.kind + '\',\'' + safeName + '\')">' +
     '<div class="poi-main"><div class="poi-name">' + poi.name + (poi.michelin ? ' <span class="badge">米其林</span>' : '') + '</div>' +
     '<div class="poi-metaline">' + meta.join("") + '</div><div class="rec-desc">' + (poi.desc || "") + '</div>' +
@@ -130,8 +131,11 @@ function renderPoiDetail(poi, ctx) {
   html += infoRow("🌐", "网站", poi.website ? poi.website.replace(/^https?:\/\//, "") : "", poi.website ? '<a class="poi-infoact" href="' + poi.website + '" target="_blank" rel="noopener">打开 ›</a>' : "");
   html += infoRow("🕐", "营业时间", poi.hours, "");
   var added = (ctx.wishNames || []).indexOf(poi.name) !== -1, safeName = poi.name.replace(/'/g, "\\'");
-  html += '<button class="btn-primary" style="width:100%;margin-top:14px;" onclick="addRecToWish(\'' + ctx.tripId + '\',\'' + safeName + '\',\'' +
-    (ctx.kind === "dining" ? "🍜" : "📍") + '\');closePoiDetail()">' + (added ? '✓ 已在想去清单' : '+ 加入想去') + '</button></div>';
+  if (typeof getTrip === "function" && getTrip(ctx.tripId)) {
+    html += '<button class="btn-primary" style="width:100%;margin-top:14px;" onclick="addRecToWish(\'' + ctx.tripId + '\',\'' + safeName + '\',\'' +
+      (ctx.kind === "dining" ? "🍜" : "📍") + '\');closePoiDetail()">' + (added ? '✓ 已在想去清单' : '+ 加入想去') + '</button>';
+  }
+  html += '</div>';
   return html;
 }
 
@@ -161,7 +165,6 @@ function renderRecLodging(recArr, booked, prefs, ctx) {
   if (ranked.length) {
     html += '<div class="field-label">' + (booked && booked.name ? "还想看看?为你精选" : "为你精选") + '</div>';
     ranked.slice(0, 3).forEach(function (l) {
-      var aud = ctx.toAUD ? ctx.toAUD(l.pricePerNight, ctx.currency) : null;
       html += '<div class="rl-item' + (l.matched ? " pref" : "") + '"><div class="rl-top"><span>' + l.name + ' · ' + l.area + '</span>' +
         '<span class="rl-price">' + (ctx.currency || "") + ' ' + fmtMoney(l.pricePerNight) + '<em>/晚</em></span></div>' +
         '<div class="rl-tags">' + (l.tags || []).map(function (t) { return '<span class="rl-tag">' + t + '</span>'; }).join("") + '</div>' +
