@@ -58,18 +58,25 @@ function renderTripDetail(trip) {
 
 /* 各板块拼装:后续任务在此追加 */
 function renderSections(trip) {
-  var html = "";
+  var html = '<div class="zone-label">行程安排</div>';
   if (typeof sectionWeather === "function") html += sectionWeather(trip);
   if (typeof sectionTodos === "function") html += sectionTodos(trip);
   if (typeof sectionPacking === "function") html += sectionPacking(trip);
-  if (typeof sectionTransport === "function") html += sectionTransport(trip);
-  if (typeof sectionLodging === "function") html += sectionLodging(trip);
   if (typeof sectionItinerary === "function") html += sectionItinerary(trip);
-  if (typeof sectionWishlist === "function") html += sectionWishlist(trip);
   if (typeof sectionBudget === "function") html += sectionBudget(trip);
   if (typeof sectionEmergency === "function") html += sectionEmergency(trip);
   if (typeof sectionTips === "function") html += sectionTips(trip);
-  if (typeof sectionLocalRecs === "function") html += sectionLocalRecs(trip);
+  var pf = typeof getPrefs === "function" ? getPrefs() : {};
+  var prefSummary = [
+    { economy: "经济舱", premium: "超经", business: "商务舱" }[pf.cabinClass],
+    pf.lodgingTypes && pf.lodgingTypes.length ? "精选住宿" : null,
+    pf.cuisine && pf.cuisine.length ? "口味优先" : null
+  ].filter(Boolean).join(" · ");
+  html += '<div class="zone-label">为你推荐<span class="zone-sub">' + (prefSummary ? " · " + prefSummary : "") + '</span></div>';
+  if (typeof sectionTransport === "function") html += sectionTransport(trip);
+  if (typeof sectionLodging === "function") html += sectionLodging(trip);
+  if (typeof sectionRecDining === "function") html += sectionRecDining(trip);
+  if (typeof sectionRecAttractions === "function") html += sectionRecAttractions(trip);
   return html;
 }
 
