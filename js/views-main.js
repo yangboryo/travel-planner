@@ -674,6 +674,22 @@ function renderNearby(box) {
   });
 }
 
+function renderDestinationPlan(box, tripId) {
+  var trip = getTrip(tripId);
+  if (!trip) { box.innerHTML = '<div class="empty-state">行程不存在</div>'; return; }
+  var recs = APP_DATA.destinationRecs[trip.city] || APP_DATA.destinationRecs[String(trip.city).replace(/市$/, "")];
+  if (!recs) { box.innerHTML = '<div class="empty-state">' + trip.city + ' 暂未收录推荐</div>'; return; }
+  var hasHotel = trip.lodging && trip.lodging.lat != null;
+  var anchor = hasHotel ? { lat: trip.lodging.lat, lon: trip.lodging.lon } : recs.center;
+  var wishNames = (trip.wishlist || []).map(function (w) { return w.name; });
+  var html = '<div class="plan-banner">📅 ' + trip.city + ' · 提前规划 · 距离基于' + (hasHotel ? "你的酒店" : "城市中心") + '</div>' +
+    '<div class="explore-head"><span>吃喝玩</span>' + sortToggleHTML(hasHotel ? "离酒店近" : "离中心近") + '</div>' +
+    '<div class="poi-group-label">🍽 好吃</div>' + poiGroupHTML(recs.dining || [], "dining", anchor, trip.id, wishNames, hasHotel ? "距酒店 " : "") +
+    '<div class="poi-group-label">🎡 好玩</div>' + poiGroupHTML(recs.attractions || [], "attractions", anchor, trip.id, wishNames, hasHotel ? "距酒店 " : "") +
+    '<button class="btn-secondary" style="width:100%;margin-top:14px;" onclick="openTripDetail(\'' + trip.id + '\')">→ 打开' + trip.city + '行程</button>';
+  box.innerHTML = html;
+}
+
 var PREF_OPTIONS = {
   budgetTier: [["economy","经济"],["comfort","舒适"],["luxury","豪华"]],
   cabinClass: [["economy","经济舱"],["premium","超经"],["business","商务舱"]],
