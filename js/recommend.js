@@ -89,6 +89,52 @@ function rankPois(pois, opts) {
   return list;
 }
 
+function priceDollars(level) { return level ? new Array(level + 1).join("$") : ""; }
+function distanceLabel(m) { return m == null ? "" : (m < 1000 ? m + "m" : (m / 1000).toFixed(1) + "km"); }
+
+function renderPoiCard(poi, ctx) {
+  var added = (ctx.wishNames || []).indexOf(poi.name) !== -1;
+  var meta = [];
+  if (poi.rating) meta.push('<span class="poi-meta">★ ' + poi.rating + '</span>');
+  if (poi.distanceM != null) meta.push('<span class="poi-meta dist">' + (ctx.anchorLabel || "") + distanceLabel(poi.distanceM) + '</span>');
+  if (ctx.kind === "dining" && poi.priceLevel) meta.push('<span class="poi-price">' + priceDollars(poi.priceLevel) + '</span>');
+  if (ctx.kind === "attractions" && poi.durationH) meta.push('<span class="poi-meta">' + poi.durationH + 'h</span>');
+  var safeName = poi.name.replace(/'/g, "\\'");
+  var addBtn = added ? '<span class="badge">已想去</span>' :
+    '<button class="rec-add" onclick="event.stopPropagation();addRecToWish(\'' + ctx.tripId + '\',\'' + safeName + '\',\'' +
+    (ctx.kind === "dining" ? "🍜" : "📍") + '\')">+ 想去</button>';
+  return '<div class="poi-card" onclick="openPoiDetail(\'' + ctx.tripId + '\',\'' + ctx.kind + '\',\'' + safeName + '\')">' +
+    '<div class="poi-main"><div class="poi-name">' + poi.name + (poi.michelin ? ' <span class="badge">米其林</span>' : '') + '</div>' +
+    '<div class="poi-metaline">' + meta.join("") + '</div><div class="rec-desc">' + (poi.desc || "") + '</div>' +
+    (poi.why ? '<div class="poi-why">✨ ' + poi.why + '</div>' : '') + '</div><div class="poi-cardact">' + addBtn + '</div></div>';
+}
+
+function infoRow(icon, label, val, actionHTML) {
+  if (!val) return "";
+  return '<div class="poi-inforow"><span class="poi-infoicon">' + icon + '</span><div class="poi-infobody">' +
+    '<div class="poi-infolabel">' + label + '</div><div class="poi-infoval">' + val + '</div></div>' + (actionHTML || "") + '</div>';
+}
+
+function renderPoiDetail(poi, ctx) {
+  var img = poi.image ? '<img class="poi-photo" src="' + poi.image + '" alt="" onerror="this.style.display=\'none\';this.parentNode.classList.add(\'noimg\')">' : "";
+  var mapQ = encodeURIComponent(poi.name + " " + (poi.address || ""));
+  var html = '<div class="poi-hero' + (poi.image ? "" : " noimg") + '">' + img + '<button class="poi-back" onclick="closePoiDetail()">‹</button></div>';
+  html += '<div class="poi-detail-body"><div class="poi-detail-title">' + poi.name +
+    (ctx.kind === "dining" && poi.priceLevel ? ' <span class="poi-price">' + priceDollars(poi.priceLevel) + '</span>' : '') +
+    (poi.michelin ? ' <span class="badge">米其林</span>' : '') + '</div><div class="poi-detail-sub">' + (poi.area || poi.category || "") +
+    (poi.rating ? ' · ★ ' + poi.rating : '') + '</div><div class="poi-detail-desc">' + (poi.desc || "") + '</div>';
+  if (poi.why) html += '<div class="poi-why-box">✨ 为你推荐:' + poi.why + '</div>';
+  if (poi.tips) html += '<div class="poi-why-box tip">💡 ' + poi.tips + '</div>';
+  html += infoRow("📍", "地址", poi.address, '<a class="poi-infoact" href="https://maps.google.com/?q=' + mapQ + '" target="_blank" rel="noopener">地图 ›</a>');
+  html += infoRow("📞", "电话", poi.phone, poi.phone ? '<a class="poi-infoact" href="tel:' + poi.phone.replace(/\s/g, "") + '">呼叫</a>' : "");
+  html += infoRow("🌐", "网站", poi.website ? poi.website.replace(/^https?:\/\//, "") : "", poi.website ? '<a class="poi-infoact" href="' + poi.website + '" target="_blank" rel="noopener">打开 ›</a>' : "");
+  html += infoRow("🕐", "营业时间", poi.hours, "");
+  var added = (ctx.wishNames || []).indexOf(poi.name) !== -1, safeName = poi.name.replace(/'/g, "\\'");
+  html += '<button class="btn-primary" style="width:100%;margin-top:14px;" onclick="addRecToWish(\'' + ctx.tripId + '\',\'' + safeName + '\',\'' +
+    (ctx.kind === "dining" ? "🍜" : "📍") + '\');closePoiDetail()">' + (added ? '✓ 已在想去清单' : '+ 加入想去') + '</button></div>';
+  return html;
+}
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     PREFS_DEFAULT: PREFS_DEFAULT,
