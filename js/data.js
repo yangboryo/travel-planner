@@ -391,7 +391,9 @@ const APP_DATA = {
       APP_DATA.destinationRecs[city][kind].forEach(function (poi) {
         poi.address = poi.address || city + " · 请点地图查看该地点的实时详细地址";
         poi.phone = poi.phone || "暂无公开电话";
-        poi.website = poi.website || "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(city + " " + poi.name);
+        /* 没有官网就留空。地图入口由 recommend.js 按区域生成(境内高德/境外 OSM),
+           不能拿地图搜索链接冒充商家官网,也不能在境内塞入不可用的 Google 链接。 */
+        poi.website = poi.website || "";
         poi.hours = poi.hours || "开放/营业时间请通过地图或官方渠道核实";
         poi.image = poi.image || fallbackImage(kind, poi.name);
         poi.source = poi.source || "精选目的地资料";

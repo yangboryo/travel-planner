@@ -59,4 +59,35 @@ assert.ok(osmPoi.address.indexOf("测试街") !== -1);
 assert.ok(osmPoi.image.length > 0, "公开图片缺失时仍有明确的示意图");
 assert.strictEqual(osmPoi.distanceM, 0);
 
+/* OSM 没有的字段一律为空,不得填充默认值冒充真实资料 */
+assert.strictEqual(osmPoi.priceLevel, null, "OSM 无价位数据,不得硬编码 $$");
+assert.strictEqual(osmPoi.rating, null, "OSM 无评分");
+assert.deepStrictEqual(osmPoi.bestFor, [], "OSM 无出行风格依据,不得全命中");
+var osmSpot = rec.osmElementToPoi({ type: "node", id: 2, lat: 31.2, lon: 121.47,
+  tags: { name: "测试公园", leisure: "park" } }, "attractions", null);
+assert.strictEqual(osmSpot.durationH, null, "OSM 无游玩时长,不得硬编码 1.5h");
+assert.strictEqual(osmSpot.website, "", "无商家官网时留空,不能拿 OSM 页面冒充官网");
+assert.ok(osmSpot.sourceUrl.indexOf("openstreetmap.org") !== -1, "OSM 页面作为资料来源单独给出");
+/* 空 bestFor 不应产生"为你推荐"理由 */
+assert.strictEqual(rec.poiWhy(osmSpot, { travelStyle: "relaxed" }, "attractions"), "");
+
+/* 区域判断:中国大陆内外 */
+assert.strictEqual(rec.outOfChina(31.2304, 121.4737), false, "上海在境内");
+assert.strictEqual(rec.outOfChina(-33.8688, 151.2093), true, "悉尼在境外");
+
+/* WGS-84 → GCJ-02:境内产生偏移,境外原样返回 */
+var sh = rec.wgs84ToGcj02(31.2304, 121.4737);
+var shift = rec.haversineM(31.2304, 121.4737, sh.lat, sh.lon);
+assert.ok(shift > 50 && shift < 1000, "上海坐标偏移应在数百米量级,实测 " + shift);
+var syd = rec.wgs84ToGcj02(-33.8688, 151.2093);
+assert.strictEqual(syd.lat, -33.8688, "境外纬度不变");
+assert.strictEqual(syd.lon, 151.2093, "境外经度不变");
+
+/* 地图链接按区域切换 */
+var cnLink = rec.mapLink(31.2304, 121.4737, "外滩");
+assert.ok(cnLink.indexOf("amap.com") !== -1, "境内用高德");
+assert.ok(cnLink.indexOf("google") === -1, "境内不得用 Google 地图");
+var auLink = rec.mapLink(-33.8688, 151.2093, "Opera House");
+assert.ok(auLink.indexOf("openstreetmap.org") !== -1, "境外用 OSM");
+
 console.log("Task1 OK");

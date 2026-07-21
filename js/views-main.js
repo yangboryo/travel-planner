@@ -679,14 +679,25 @@ function fetchNearbyPois(loc, cb) {
 }
 
 function renderNearby(box) {
+  /* 附近数据源(OSM)没有评分,只有距离是可信信号,固定按距离排。 */
+  EXPLORE_STATE.sort = "distance";
   box.innerHTML = '<div class="empty-inline">正在获取真实位置…</div>';
   requestGeo(function (loc) {
     if (!loc) { box.innerHTML = '<div class="empty-state">未获取到定位。请到「我的」设置现在所在地。</div>'; return; }
     box.innerHTML = '<div class="empty-inline">正在查询 5 公里内的餐馆和景点…</div>';
     fetchNearbyPois(loc, function (err, near) {
       if (err) { box.innerHTML = '<div class="empty-state">附近数据查询失败，请检查网络后重试。<br><button class="btn-secondary" onclick="renderExploreContent()">重新查询</button></div>'; return; }
-      var html = '<div class="nearby-privacy">📍 使用设备真实位置查询 5 公里范围；坐标仅发送给 OpenStreetMap 查询，不保存、不上传同步。</div>' +
-        '<div class="explore-head"><span>我的真实附近</span>' + sortToggleHTML("离我最近") + '</div>' +
+      var isReal = loc.accuracyM != null;
+      var posLine = isReal
+        ? "📍 设备实测定位，精度约 ±" + loc.accuracyM + " 米"
+        : "📍 未取得实测定位，使用「我的」里手填的" + (loc.name || "所在地");
+      var html = '<div class="nearby-privacy">' + posLine +
+        '；查询 5 公里范围，坐标仅用于本次查询，不保存、不上传同步。</div>';
+      /* 中国大陆的 OSM 收录稀疏,先讲清楚,不让用户误以为"附近真的没店"。 */
+      if (!outOfChina(loc.lat, loc.lon)) {
+        html += '<div class="nearby-privacy warn">⚠️ 当前位置在中国大陆，附近数据来自 OpenStreetMap，收录不全，仅供参考。地图链接已切换为高德并做过坐标纠偏。</div>';
+      }
+      html += '<div class="explore-head"><span>我的真实附近</span><span class="sort-note">按距离排序</span></div>' +
         '<div class="poi-group-label">🍽 好吃</div>' + (poiGroupHTML(near.dining, "dining", loc, "nearby", [], "") || '<div class="empty-inline">5 公里内暂无有名称的餐饮数据</div>') +
         '<div class="poi-group-label">🎡 好玩</div>' + (poiGroupHTML(near.attractions, "attractions", loc, "nearby", [], "") || '<div class="empty-inline">5 公里内暂无有名称的景点数据</div>');
       box.innerHTML = html;

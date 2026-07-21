@@ -1,6 +1,6 @@
 /* 应用层:store(localStorage)、导航切换、入口 */
 
-var APP_VERSION = "v14"; /* 与 sw.js 的 VERSION 保持一致 */
+var APP_VERSION = "v15"; /* 与 sw.js 的 VERSION 保持一致 */
 
 /* ---------- store ---------- */
 
@@ -353,11 +353,13 @@ function getAnchorLoc() {
 function requestGeo(cb) {
   if (!navigator.geolocation) { cb(getAnchorLoc()); return; }
   navigator.geolocation.getCurrentPosition(function (pos) {
-    var fallback = getPassport().currentLoc;
+    /* 名称不沿用「我的」里手填的城市:坐标是实测的,套用手填名会张冠李戴。 */
     STATE.geoLoc = { lat: pos.coords.latitude, lon: pos.coords.longitude,
-      name: fallback && fallback.name || "当前位置", at: Date.now() };
+      name: "当前位置", accuracyM: Math.round(pos.coords.accuracy || 0), at: Date.now() };
     cb(STATE.geoLoc);
-  }, function () { cb(getAnchorLoc()); }, { timeout: 8000, maximumAge: 600000 });
+  }, function () { cb(getAnchorLoc()); },
+  /* 高精度 + 只接受 1 分钟内的定位,避免用到基站粗定位或过期坐标。 */
+  { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
 }
 
 /* ---------- PWA 更新检测(桌面版自动拉新) ---------- */

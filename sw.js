@@ -1,6 +1,6 @@
 /* Service Worker:全量预缓存,离线优先。改版时把 VERSION +1 强制刷新缓存。 */
 
-var VERSION = "v14";
+var VERSION = "v15";
 var CACHE = "travel-planner-" + VERSION;
 var ASSETS = [
   "./",

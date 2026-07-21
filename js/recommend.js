@@ -89,6 +89,65 @@ function rankPois(pois, opts) {
   return list;
 }
 
+/* ---------- 区域路由:中国大陆用 GCJ-02 与高德,其他地区用 WGS-84 与 OSM ---------- */
+
+var GCJ_A = 6378245.0;
+var GCJ_EE = 0.00669342162296594323;
+
+/* 粗略国界盒。境外直接返回原坐标,不做偏移。 */
+function outOfChina(lat, lon) {
+  return lon < 72.004 || lon > 137.8347 || lat < 0.8293 || lat > 55.8271;
+}
+
+function gcjTransformLat(x, y) {
+  var ret = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.sqrt(Math.abs(x));
+  ret += (20.0 * Math.sin(6.0 * x * Math.PI) + 20.0 * Math.sin(2.0 * x * Math.PI)) * 2.0 / 3.0;
+  ret += (20.0 * Math.sin(y * Math.PI) + 40.0 * Math.sin(y / 3.0 * Math.PI)) * 2.0 / 3.0;
+  ret += (160.0 * Math.sin(y / 12.0 * Math.PI) + 320 * Math.sin(y * Math.PI / 30.0)) * 2.0 / 3.0;
+  return ret;
+}
+
+function gcjTransformLon(x, y) {
+  var ret = 300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.sqrt(Math.abs(x));
+  ret += (20.0 * Math.sin(6.0 * x * Math.PI) + 20.0 * Math.sin(2.0 * x * Math.PI)) * 2.0 / 3.0;
+  ret += (20.0 * Math.sin(x * Math.PI) + 40.0 * Math.sin(x / 3.0 * Math.PI)) * 2.0 / 3.0;
+  ret += (150.0 * Math.sin(x / 12.0 * Math.PI) + 300.0 * Math.sin(x / 30.0 * Math.PI)) * 2.0 / 3.0;
+  return ret;
+}
+
+/* GPS(WGS-84) → 火星坐标(GCJ-02)。中国大陆地图服务需要这一步,否则点位偏移数百米。 */
+function wgs84ToGcj02(lat, lon) {
+  if (lat == null || lon == null || outOfChina(lat, lon)) return { lat: lat, lon: lon };
+  var dLat = gcjTransformLat(lon - 105.0, lat - 35.0);
+  var dLon = gcjTransformLon(lon - 105.0, lat - 35.0);
+  var radLat = lat / 180.0 * Math.PI;
+  var magic = Math.sin(radLat);
+  magic = 1 - GCJ_EE * magic * magic;
+  var sqrtMagic = Math.sqrt(magic);
+  dLat = (dLat * 180.0) / ((GCJ_A * (1 - GCJ_EE)) / (magic * sqrtMagic) * Math.PI);
+  dLon = (dLon * 180.0) / (GCJ_A / sqrtMagic * Math.cos(radLat) * Math.PI);
+  return { lat: lat + dLat, lon: lon + dLon };
+}
+
+/* 地图链接:境内高德(坐标转 GCJ-02),境外 OSM。不使用在中国大陆不可用的服务。 */
+function mapLink(lat, lon, name) {
+  var label = encodeURIComponent(name || "目的地");
+  if (lat == null || lon == null) {
+    return "https://www.openstreetmap.org/search?query=" + label;
+  }
+  if (!outOfChina(lat, lon)) {
+    var g = wgs84ToGcj02(lat, lon);
+    return "https://uri.amap.com/marker?position=" + g.lon.toFixed(6) + "," + g.lat.toFixed(6) +
+      "&name=" + label + "&coordinate=gaode";
+  }
+  return "https://www.openstreetmap.org/?mlat=" + lat.toFixed(6) + "&mlon=" + lon.toFixed(6) +
+    "#map=17/" + lat.toFixed(5) + "/" + lon.toFixed(5);
+}
+
+function mapProviderName(lat, lon) {
+  return (lat != null && lon != null && !outOfChina(lat, lon)) ? "高德地图" : "OpenStreetMap";
+}
+
 function osmAddress(tags) {
   if (tags["addr:full"]) return tags["addr:full"];
   return [tags["addr:housenumber"], tags["addr:street"], tags["addr:suburb"], tags["addr:city"]]
@@ -118,16 +177,18 @@ function osmElementToPoi(el, kind, anchor) {
   var lon = el.lon != null ? el.lon : el.center && el.center.lon;
   var name = tags["name:zh"] || tags.name || tags.brand || "未命名地点";
   var phone = tags["contact:phone"] || tags.phone || "暂无公开电话";
-  var website = tags["contact:website"] || tags.website || "https://www.openstreetmap.org/" + el.type + "/" + el.id;
+  /* 官网只认商家自己的网址;OSM 页面是资料来源,单独放 sourceUrl,不冒充官网。 */
+  var website = tags["contact:website"] || tags.website || "";
   return {
     name: name, lat: lat, lon: lon,
     distanceM: anchor && lat != null && lon != null ? haversineM(anchor.lat, anchor.lon, lat, lon) : null,
     image: osmImage(tags, kind, name), address: osmAddress(tags), phone: phone, website: website,
     hours: tags.opening_hours || "营业时间请联系商家或查看地图", area: tags["addr:suburb"] || tags["addr:city"] || "附近",
     desc: tags.description || (kind === "dining" ? (tags.cuisine ? "菜系: " + tags.cuisine : "附近餐饮") : (tags.tourism || "附近景点")),
-    cuisineTags: tags.cuisine ? tags.cuisine.split(/[;,]/) : [], priceLevel: 2, rating: null, michelin: false,
-    category: tags.tourism || tags.leisure || "景点", durationH: 1.5, bestFor: ["packed", "balanced", "relaxed"],
-    source: "OpenStreetMap"
+    /* 以下字段 OSM 没有权威数据,一律留空,渲染层会跳过,绝不填默认值冒充真实资料。 */
+    cuisineTags: tags.cuisine ? tags.cuisine.split(/[;,]/) : [], priceLevel: null, rating: null, michelin: false,
+    category: tags.tourism || tags.leisure || "景点", durationH: null, bestFor: [],
+    source: "OpenStreetMap", sourceUrl: "https://www.openstreetmap.org/" + el.type + "/" + el.id
   };
 }
 
@@ -160,7 +221,8 @@ function infoRow(icon, label, val, actionHTML) {
 
 function renderPoiDetail(poi, ctx) {
   var img = poi.image ? '<img class="poi-photo" src="' + poi.image + '" alt="" onerror="this.style.display=\'none\';this.parentNode.classList.add(\'noimg\')">' : "";
-  var mapQ = encodeURIComponent(poi.name + " " + (poi.address || ""));
+  var mapHref = mapLink(poi.lat, poi.lon, poi.name);
+  var mapName = mapProviderName(poi.lat, poi.lon);
   var html = '<div class="poi-hero' + (poi.image ? "" : " noimg") + '">' + img + '<button class="poi-back" onclick="closePoiDetail()">‹</button></div>';
   html += '<div class="poi-detail-body"><div class="poi-detail-title">' + poi.name +
     (ctx.kind === "dining" && poi.priceLevel ? ' <span class="poi-price">' + priceDollars(poi.priceLevel) + '</span>' : '') +
@@ -168,8 +230,12 @@ function renderPoiDetail(poi, ctx) {
     (poi.rating ? ' · ★ ' + poi.rating : '') + '</div><div class="poi-detail-desc">' + (poi.desc || "") + '</div>';
   if (poi.why) html += '<div class="poi-why-box">✨ 为你推荐:' + poi.why + '</div>';
   if (poi.tips) html += '<div class="poi-why-box tip">💡 ' + poi.tips + '</div>';
-  if (poi.source) html += '<div class="poi-detail-sub">资料来源: ' + poi.source + '，出发前请再次核实</div>';
-  html += infoRow("📍", "地址", poi.address, '<a class="poi-infoact" href="https://maps.google.com/?q=' + mapQ + '" target="_blank" rel="noopener">地图 ›</a>');
+  if (poi.source) {
+    html += '<div class="poi-detail-sub">资料来源: ' + poi.source +
+      (poi.sourceUrl ? ' · <a href="' + poi.sourceUrl + '" target="_blank" rel="noopener">查看原始记录</a>' : '') +
+      '，出发前请再次核实</div>';
+  }
+  html += infoRow("📍", "地址", poi.address, '<a class="poi-infoact" href="' + mapHref + '" target="_blank" rel="noopener">' + mapName + ' ›</a>');
   var canCall = poi.phone && /\d/.test(poi.phone) && poi.phone.indexOf("暂无") === -1;
   html += infoRow("📞", "电话", poi.phone, canCall ? '<a class="poi-infoact" href="tel:' + poi.phone.replace(/\s/g, "") + '">呼叫</a>' : "");
   html += infoRow("🌐", "网站", poi.website ? poi.website.replace(/^https?:\/\//, "") : "", poi.website ? '<a class="poi-infoact" href="' + poi.website + '" target="_blank" rel="noopener">打开 ›</a>' : "");
@@ -228,6 +294,10 @@ if (typeof module !== "undefined" && module.exports) {
     poiWhy: poiWhy,
     rankPois: rankPois,
     osmAddress: osmAddress,
-    osmElementToPoi: osmElementToPoi
+    osmElementToPoi: osmElementToPoi,
+    outOfChina: outOfChina,
+    wgs84ToGcj02: wgs84ToGcj02,
+    mapLink: mapLink,
+    mapProviderName: mapProviderName
   };
 }
