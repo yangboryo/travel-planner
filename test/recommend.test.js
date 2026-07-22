@@ -90,4 +90,48 @@ assert.ok(cnLink.indexOf("google") === -1, "境内不得用 Google 地图");
 var auLink = rec.mapLink(-33.8688, 151.2093, "Opera House");
 assert.ok(auLink.indexOf("openstreetmap.org") !== -1, "境外用 OSM");
 
+/* 港澳台不是中国大陆:地图走 OSM,不加 GCJ 偏移,不显示大陆横幅 */
+assert.strictEqual(rec.inMainlandChina(31.2304, 121.4737), true, "上海是大陆");
+assert.strictEqual(rec.inMainlandChina(39.9042, 116.4074), true, "北京是大陆");
+assert.strictEqual(rec.inMainlandChina(22.3027, 114.1772), false, "香港不是大陆");
+assert.strictEqual(rec.inMainlandChina(22.1987, 113.5439), false, "澳门不是大陆");
+assert.strictEqual(rec.inMainlandChina(25.0330, 121.5654), false, "台北不是大陆");
+assert.strictEqual(rec.inMainlandChina(-33.8688, 151.2093), false, "悉尼不是大陆");
+assert.strictEqual(rec.inMainlandChina(null, null), false, "坐标缺失不算大陆");
+
+var hkLink = rec.mapLink(22.3027, 114.1772, "维多利亚港");
+assert.ok(hkLink.indexOf("openstreetmap.org") !== -1, "香港用 OSM");
+assert.ok(hkLink.indexOf("amap.com") === -1, "香港不得用高德");
+assert.ok(hkLink.indexOf("22.3027") !== -1, "香港链接用未偏移的原始坐标");
+assert.strictEqual(rec.mapProviderName(22.3027, 114.1772), "OpenStreetMap");
+assert.strictEqual(rec.mapProviderName(31.2304, 121.4737), "高德地图");
+
+/* OSM 标签 → 本项目口味分类 */
+var hkTags = { cuisine: "chinese;cantonese" };
+assert.deepStrictEqual(rec.osmTagsToCuisineTags(hkTags, 22.3027, 114.1772), [], "香港不判 local(非大陆)");
+assert.ok(rec.osmTagsToCuisineTags(hkTags, 31.2304, 121.4737).indexOf("local") !== -1, "上海的中餐算 local");
+
+assert.ok(rec.osmTagsToCuisineTags({ "diet:halal": "yes" }, 31.2, 121.4).indexOf("halal") !== -1);
+assert.ok(rec.osmTagsToCuisineTags({ "diet:vegetarian": "only" }, 31.2, 121.4).indexOf("vegetarian") !== -1);
+assert.ok(rec.osmTagsToCuisineTags({ "diet:vegan": "yes" }, 31.2, 121.4).indexOf("vegetarian") !== -1);
+assert.ok(rec.osmTagsToCuisineTags({ cuisine: "sichuan" }, 31.2, 121.4).indexOf("spicy") !== -1);
+assert.ok(rec.osmTagsToCuisineTags({ cuisine: "thai" }, 13.75, 100.5).indexOf("spicy") !== -1);
+
+/* trending 永不产出;无相关标签则为空 */
+var all = rec.osmTagsToCuisineTags({ cuisine: "chinese;sichuan", "diet:halal": "yes" }, 31.2, 121.4);
+assert.strictEqual(all.indexOf("trending"), -1, "OSM 无热度数据,不得产出 trending");
+assert.strictEqual(all.length, new Set(all).size, "结果需去重");
+assert.deepStrictEqual(rec.osmTagsToCuisineTags({ cuisine: "pizza" }, 48.85, 2.35), [], "无对应分类返回空");
+assert.deepStrictEqual(rec.osmTagsToCuisineTags({}, 31.2, 121.4), []);
+
+/* osmElementToPoi 接线正确,原始菜系名单独保留 */
+var poi = rec.osmElementToPoi(
+  { type: "node", id: 1, lat: 31.2305, lon: 121.4738, tags: { name: "某川菜馆", cuisine: "sichuan" } },
+  "dining", { lat: 31.2304, lon: 121.4737 });
+assert.ok(poi.cuisineTags.indexOf("spicy") !== -1);
+assert.ok(poi.cuisineTags.indexOf("sichuan") === -1, "原始 OSM 菜系名不得混进 cuisineTags");
+assert.strictEqual(poi.rawCuisine, "sichuan");
+assert.strictEqual(poi.priceLevel, null, "v15 原则:无权威数据的字段保持留空");
+assert.strictEqual(poi.durationH, null);
+
 console.log("Task1 OK");

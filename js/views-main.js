@@ -694,8 +694,11 @@ function renderNearby(box) {
       var html = '<div class="nearby-privacy">' + posLine +
         '；查询 5 公里范围，坐标仅用于本次查询，不保存、不上传同步。</div>';
       /* 中国大陆的 OSM 收录稀疏,先讲清楚,不让用户误以为"附近真的没店"。 */
-      if (!outOfChina(loc.lat, loc.lon)) {
+      if (inMainlandChina(loc.lat, loc.lon)) {
         html += '<div class="nearby-privacy warn">⚠️ 当前位置在中国大陆，附近数据来自 OpenStreetMap，收录不全，仅供参考。地图链接已切换为高德并做过坐标纠偏。</div>';
+      }
+      if ((getPrefs().cuisine || []).indexOf("trending") !== -1) {
+        html += '<div class="nearby-privacy">附近数据源没有热度信息，“网红店”偏好对附近餐馆不生效。</div>';
       }
       html += '<div class="explore-head"><span>我的真实附近</span><span class="sort-note">按距离排序</span></div>' +
         '<div class="poi-group-label">🍽 好吃</div>' + (poiGroupHTML(near.dining, "dining", loc, "nearby", [], "") || '<div class="empty-inline">5 公里内暂无有名称的餐饮数据</div>') +

@@ -1,6 +1,6 @@
 /* 应用层:store(localStorage)、导航切换、入口 */
 
-var APP_VERSION = "v15"; /* 与 sw.js 的 VERSION 保持一致 */
+var APP_VERSION = "v16"; /* 与 sw.js 的 VERSION 保持一致 */
 
 /* ---------- store ---------- */
 

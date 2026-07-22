@@ -60,7 +60,12 @@ function poiWhy(poi, prefs, kind) {
   var p = normalizePrefs(prefs);
   if (kind === "dining") {
     var hit = (poi.cuisineTags || []).filter(function (t) { return p.cuisine.indexOf(t) !== -1; });
-    if (hit.length) return "贴合你的" + hit.map(function (t) { return CUISINE_LABEL[t] || t; }).join("、") + "偏好";
+    if (hit.length) {
+      var certain = hit.filter(function (t) { return t !== "spicy"; });
+      var why = certain.length ? "贴合你的" + certain.map(function (t) { return CUISINE_LABEL[t] || t; }).join("、") + "偏好" : "";
+      if (hit.indexOf("spicy") !== -1) why += (why ? " · " : "") + "该菜系通常偏辣";
+      return why;
+    }
     return poi.michelin ? "米其林推荐" : "";
   }
   if (kind === "attractions" && (poi.bestFor || []).indexOf(p.travelStyle) !== -1) {
@@ -99,6 +104,14 @@ function outOfChina(lat, lon) {
   return lon < 72.004 || lon > 137.8347 || lat < 0.8293 || lat > 55.8271;
 }
 
+function inMainlandChina(lat, lon) {
+  if (lat == null || lon == null || outOfChina(lat, lon)) return false;
+  if (lat >= 22.13 && lat <= 22.58 && lon >= 113.82 && lon <= 114.44) return false;
+  if (lat >= 22.10 && lat <= 22.22 && lon >= 113.52 && lon <= 113.60) return false;
+  if (lat >= 21.85 && lat <= 25.35 && lon >= 119.30 && lon <= 122.05) return false;
+  return true;
+}
+
 function gcjTransformLat(x, y) {
   var ret = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.sqrt(Math.abs(x));
   ret += (20.0 * Math.sin(6.0 * x * Math.PI) + 20.0 * Math.sin(2.0 * x * Math.PI)) * 2.0 / 3.0;
@@ -135,7 +148,7 @@ function mapLink(lat, lon, name) {
   if (lat == null || lon == null) {
     return "https://www.openstreetmap.org/search?query=" + label;
   }
-  if (!outOfChina(lat, lon)) {
+  if (inMainlandChina(lat, lon)) {
     var g = wgs84ToGcj02(lat, lon);
     return "https://uri.amap.com/marker?position=" + g.lon.toFixed(6) + "," + g.lat.toFixed(6) +
       "&name=" + label + "&coordinate=gaode";
@@ -145,7 +158,29 @@ function mapLink(lat, lon, name) {
 }
 
 function mapProviderName(lat, lon) {
-  return (lat != null && lon != null && !outOfChina(lat, lon)) ? "高德地图" : "OpenStreetMap";
+  return inMainlandChina(lat, lon) ? "高德地图" : "OpenStreetMap";
+}
+
+function osmTagsToCuisineTags(tags, anchorLat, anchorLon) {
+  tags = tags || {};
+  var result = [];
+  var add = function (tag) { if (result.indexOf(tag) === -1) result.push(tag); };
+  var isYesOrOnly = function (value) {
+    value = String(value || "").toLowerCase().replace(/^\s+|\s+$/g, "");
+    return value === "yes" || value === "only";
+  };
+  if (isYesOrOnly(tags["diet:halal"])) add("halal");
+  if (isYesOrOnly(tags["diet:vegetarian"]) || isYesOrOnly(tags["diet:vegan"])) add("vegetarian");
+  var cuisines = String(tags.cuisine || "").split(/[;,]/).map(function (value) {
+    return value.toLowerCase().replace(/^\s+|\s+$/g, "");
+  }).filter(Boolean);
+  var spicy = ["sichuan", "hunan", "chongqing", "korean", "thai", "indian", "mexican"];
+  var chinese = ["chinese", "sichuan", "hunan", "chongqing", "cantonese", "dumpling", "noodle", "hotpot", "shandong", "jiangzhe", "xinjiang"];
+  cuisines.forEach(function (cuisine) {
+    if (spicy.indexOf(cuisine) !== -1) add("spicy");
+    if (inMainlandChina(anchorLat, anchorLon) && chinese.indexOf(cuisine) !== -1) add("local");
+  });
+  return result;
 }
 
 function osmAddress(tags) {
@@ -186,7 +221,8 @@ function osmElementToPoi(el, kind, anchor) {
     hours: tags.opening_hours || "营业时间请联系商家或查看地图", area: tags["addr:suburb"] || tags["addr:city"] || "附近",
     desc: tags.description || (kind === "dining" ? (tags.cuisine ? "菜系: " + tags.cuisine : "附近餐饮") : (tags.tourism || "附近景点")),
     /* 以下字段 OSM 没有权威数据,一律留空,渲染层会跳过,绝不填默认值冒充真实资料。 */
-    cuisineTags: tags.cuisine ? tags.cuisine.split(/[;,]/) : [], priceLevel: null, rating: null, michelin: false,
+    cuisineTags: osmTagsToCuisineTags(tags, anchor && anchor.lat, anchor && anchor.lon), rawCuisine: tags.cuisine || "",
+    priceLevel: null, rating: null, michelin: false,
     category: tags.tourism || tags.leisure || "景点", durationH: null, bestFor: [],
     source: "OpenStreetMap", sourceUrl: "https://www.openstreetmap.org/" + el.type + "/" + el.id
   };
@@ -296,6 +332,8 @@ if (typeof module !== "undefined" && module.exports) {
     osmAddress: osmAddress,
     osmElementToPoi: osmElementToPoi,
     outOfChina: outOfChina,
+    inMainlandChina: inMainlandChina,
+    osmTagsToCuisineTags: osmTagsToCuisineTags,
     wgs84ToGcj02: wgs84ToGcj02,
     mapLink: mapLink,
     mapProviderName: mapProviderName
